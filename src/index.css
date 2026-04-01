@@ -1,0 +1,47 @@
+/* Zorg dat de browser geen standaard marges toevoegt */
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Zorg dat de Modus Layout het hele scherm vult */
+.modus-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* src/index.css */
+
+/* We voeren deze regels ALLEEN uit op desktop schermen (breder dan 992px) */
+@media (min-width: 992px) {
+  
+  /* Als de mini-sidebar actief is, dwingen we de layout-ruimte naar 72px */
+  .modus-body.mini-sidebar-active .modus-sidebar {
+    width: 72px !important;
+    min-width: 72px !important;
+    flex: 0 0 72px !important; /* Dit is de sleutel! Vertelt de flex-layout exact hoeveel ruimte hij krijgt */
+    transition: all 0.3s ease-in-out;
+  }
+
+  /* Zorg dat we terug-animeren als hij weer open gaat */
+  .modus-body .modus-sidebar {
+    transition: all 0.3s ease-in-out;
+  }
+}
+
+/* Verberg de tekst als de mini-sidebar actief is */
+.modus-body.mini-sidebar-active .modus-sidebar span {
+  display: none;
+}
+
+/* Centreer de icoontjes netjes in de 72px */
+.modus-body.mini-sidebar-active .modus-sidebar .left-nav-icon {
+  margin-right: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+}

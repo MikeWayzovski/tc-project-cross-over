@@ -1,0 +1,24 @@
+/* 1. De basis: Deze staat altijd aan, zodat hij soepel heen én terug animeert */
+.sidebarBase {
+  transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
+  overflow: hidden; /* Voorkomt dat tekst uitsteekt tijdens het schuiven */
+}
+
+/* 2. De gesloten status: Overschrijft de standaard Modus breedte */
+.sidebarClosed {
+  width: 72px !important;
+  min-width: 72px !important;
+}
+
+/* Verberg tekst direct als hij gesloten is */
+.sidebarClosed span {
+  display: none;
+}
+
+/* Centreer het icoontje in de overgebleven 72px */
+.sidebarClosed i {
+  margin-right: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+}
