@@ -1,70 +1,73 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@trimble-oss/trimble-id-react'; // AUTH HOOK TOEGEVOEGD
+import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
 import ModusIconButton from './components/ModusIconButton';
 import ModusSidebar from './components/ModusSidebar';
 import UserMenu from './components/UserMenu';
 import ProjectToolbar from './components/ProjectToolbar'; 
 import ModusFooter from './components/ModusFooter'; 
-import ProjectGrid from './components/ProjectGrid'; // NIEUW COMPONENT
-import { getProjects } from './api/connectApi'; // API HELPER
+import ProjectGrid from './components/ProjectGrid';
+import ProjectList from './components/ProjectList';
+import { getProjects } from './api/connectApi'; 
 
 function App() {
-  const { isAuthenticated, getAccessTokenSilently } = useAuth(); // Pak auth gegevens
+  const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activePage, setActivePage] = useState('home');
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // Laten we starten op grid!
+  const [viewMode, setViewMode] = useState('grid'); 
   const [region, setRegion] = useState('Europa');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   
-  // Hier slaan we de projecten in op!
   const [projects, setProjects] = useState([]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const [activePage, setActivePage] = useState('projects'); 
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  const openProject = (project) => {
+    setSelectedProject(project);
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  // DE DATA FETCH LUS
-  useEffect(() => {
-    const fetchMyProjects = async () => {
-      // Alleen ophalen als we ingelogd zijn en op de home pagina staan
-      if (isAuthenticated && activePage === 'home') {
-        setIsLoading(true);
-        setLoadingText(`Projecten ophalen uit ${region}...`);
-        
-        try {
-          const token = await getAccessTokenSilently();
-          const fetchedProjects = await getProjects(token, region);
-          
-          // API Response veilig wegschrijven
-          if (Array.isArray(fetchedProjects)) {
-            setProjects(fetchedProjects);
-          } else if (fetchedProjects && Array.isArray(fetchedProjects.data)) {
-            setProjects(fetchedProjects.data); // Soms zit het in een .data object (zoals je minimal voorbeeld)
-          } else {
-            setProjects([]);
-          }
-        } catch (error) {
-          console.error("Fout:", error);
-        } finally {
-          setIsLoading(false);
-          setLoadingText('');
-        }
+  // De losgetrokken data fetch functie
+  const loadProjects = async () => {
+    if (!isAuthenticated) return;
+    
+    setIsLoading(true);
+    setLoadingText(`Projecten ophalen uit ${region}...`);
+    
+    try {
+      const token = await getAccessTokenSilently();
+      const fetchedProjects = await getProjects(token, region);
+      
+      if (Array.isArray(fetchedProjects)) {
+        setProjects(fetchedProjects);
+      } else if (fetchedProjects && Array.isArray(fetchedProjects.data)) {
+        setProjects(fetchedProjects.data); 
       } else {
-        // Niet ingelogd? Maak de lijst leeg.
         setProjects([]);
       }
-    };
+    } catch (error) {
+      console.error("Fout:", error);
+    } finally {
+      setIsLoading(false);
+      setLoadingText('');
+    }
+  };
 
-    fetchMyProjects();
-  }, [isAuthenticated, region, activePage, getAccessTokenSilently]); // Vuur opnieuw af als regio verandert!
+  // Vuur de functie automatisch af als we op de projects pagina landen of van regio wisselen
+  useEffect(() => {
+    if (activePage === 'projects') {
+      loadProjects();
+    }
+  }, [isAuthenticated, region, activePage, getAccessTokenSilently]); 
 
   return (
     <div className="modus-layout">
@@ -88,37 +91,59 @@ function App() {
 
       {/* BODY */}
       <div className={`modus-body sidebar-open ${!isSidebarOpen ? 'mini-sidebar-active' : ''}`}>
-        <ModusSidebar isOpen={isSidebarOpen} activePage={activePage} onPageChange={setActivePage} />
+        <ModusSidebar 
+          isOpen={isSidebarOpen} 
+          activePage={activePage} 
+          onPageChange={(id) => {
+            setActivePage(id);
+            setSelectedProject(null); 
+          }} 
+        />
 
         <div className="modus-content-rows" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
           
-          {/* TOOLBAR */}
-          {activePage === 'home' && (
-            <ProjectToolbar viewMode={viewMode} setViewMode={setViewMode} region={region} setRegion={setRegion} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+          {activePage === 'projects' && !selectedProject && (
+            <ProjectToolbar 
+              viewMode={viewMode} 
+              setViewMode={setViewMode} 
+              region={region} 
+              setRegion={setRegion} 
+              searchQuery={searchQuery} 
+              setSearchQuery={setSearchQuery}
+              onRefresh={loadProjects} // HIER GEVEN WE DE FUNCTIE DOOR!
+            />
           )}
 
-          {/* CONTENT (SCROLLABLE) */}
           <div className="modus-content-columns" style={{ flexGrow: 1, overflow: 'hidden' }}>
             <div className="modus-content" style={{ overflowY: 'auto', height: '100%', padding: '20px' }}>
               
-              {!isAuthenticated ? (
-                <div className="alert alert-primary mt-3" role="alert">
-                  Je moet inloggen via het poppetje rechtsboven om projecten te bekijken.
-                </div>
-              ) : activePage === 'home' ? (
-                // Hier tekenen we het Grid! We kunnen later makkelijk schakelen naar een List op basis van viewMode
-                viewMode === 'grid' ? (
-                  <ProjectGrid projects={projects} searchQuery={searchQuery} />
-                ) : (
-                  <div className="alert alert-info mt-3">Lijstweergave wordt hier straks gebouwd!</div>
-                )
-              ) : (
-                <h3>Content voor {activePage}</h3>
+              {activePage === 'projects' && (
+                <>
+                  {selectedProject ? (
+                    <div>
+                      <button className="btn btn-link p-0 mb-3" onClick={() => setSelectedProject(null)}>
+                        <ModusIcon name="arrow-left" type="duotone" size="16px" extraClasses="me-1" />
+                        Terug naar overzicht
+                      </button>
+                      <h3>Project: {selectedProject.name}</h3>
+                      <p className="text-muted">ID: {selectedProject.id}</p>
+                    </div>
+                  ) : (
+                    viewMode === 'grid' ? (
+                      <ProjectGrid projects={projects} searchQuery={searchQuery} onProjectClick={openProject} />
+                    ) : (
+                      <ProjectList projects={projects} searchQuery={searchQuery} onProjectClick={openProject} />
+                    )
+                  )}
+                </>
               )}
+
+              {activePage === 'users' && <h3>Bedrijfsbreed Gebruikersbeheer</h3>}
+              {activePage === 'groups' && <h3>Organisatie van Gebruikersgroepen</h3>}
+              {activePage === 'settings' && <h3>Instellingen</h3>}
             
             </div>
           </div>
-
           <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={null} />
         </div>
       </div>

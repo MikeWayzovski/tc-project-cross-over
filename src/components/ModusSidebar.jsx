@@ -1,18 +1,17 @@
 import React from 'react';
 import ModusIcon from './ModusIcon';
-// Hier is de magie: we importeren de CSS speciaal voor dit component!
 import styles from './ModusSidebar.module.css'; 
 
 const ModusSidebar = ({ isOpen, activePage, onPageChange }) => {
+  // FIX: NavItems netjes hier gedefinieerd zodat de sidebar de juiste lijst toont
   const navItems = [
-    { id: 'home', label: 'Home', icon: 'house' },
+    { id: 'projects', label: 'Projecten', icon: 'folder-simple' },
     { id: 'users', label: 'Gebruikers', icon: 'users' },
+    { id: 'groups', label: 'Groepen', icon: 'users-four' },
     { id: 'settings', label: 'Instellingen', icon: 'gear' }
   ];
 
   return (
-    // We combineren de standaard modus-sidebar, onze eigen base class (voor de animatie), 
-    // en conditioneel de closed class.
     <nav className={`modus-sidebar ${styles.sidebarBase} ${!isOpen ? styles.sidebarClosed : ''}`}>
       <ul className="nav flex-column">
         
