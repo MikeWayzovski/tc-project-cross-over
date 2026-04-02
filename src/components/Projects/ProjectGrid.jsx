@@ -1,6 +1,6 @@
 import React from 'react';
-import ModusIcon from './ModusIcon';
-import AuthImage from './AuthImage'; // 1. IMPORT TOEGEVOEGD!
+import ModusIcon from '../Modus/ModusIcon';
+import AuthImage from '../Shared/AuthImage'; // 1. IMPORT TOEGEVOEGD!
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Onbekend';

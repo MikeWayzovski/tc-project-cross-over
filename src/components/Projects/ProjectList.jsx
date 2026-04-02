@@ -1,6 +1,6 @@
 import React from 'react';
-import ModusIcon from './ModusIcon';
-import AuthImage from './AuthImage';
+import ModusIcon from '../Modus/ModusIcon';
+import AuthImage from '../Shared/AuthImage';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';

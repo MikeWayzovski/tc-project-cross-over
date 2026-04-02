@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
-import ModusIconButton from './components/ModusIconButton';
-import ModusSidebar from './components/ModusSidebar';
-import UserMenu from './components/UserMenu';
-import ProjectToolbar from './components/ProjectToolbar'; 
-import ModusFooter from './components/ModusFooter'; 
-import ProjectGrid from './components/ProjectGrid';
-import ProjectList from './components/ProjectList';
-import ProjectDetails from './components/ProjectDetails';
-import { getProjects } from './api/connectApi'; 
-import GroupCanvas from './components/GroupCanvas';
-import { getAllAccountGroups } from './api/connectApi';
+import ModusIconButton from './components/Modus/ModusIconButton';
+import ModusSidebar from './components/Modus/ModusSidebar';
+import UserMenu from './components/UserAndGroups/UserMenu';
+import ProjectToolbar from './components/Projects/ProjectToolbar'; 
+import ModusFooter from './components/Modus/ModusFooter'; 
+import ProjectGrid from './components/Projects/ProjectGrid';
+import ProjectList from './components/Projects/ProjectList';
+import ProjectDetails from './components/Projects/ProjectDetails';
+import GroupCanvas from './components/UserAndGroups/GroupCanvas';
+import UserProvisioning from './components/UserAndGroups/UserProvisioning';
+import ModusIcon from './components/Modus/ModusIcon'; // Zorg dat deze import er staat voor de CSV knop
+import { getProjects, getAllAccountGroups, getAllGroupsWithUsers } from './api/connectApi';
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
@@ -27,19 +28,17 @@ function App() {
   const [progress, setProgress] = useState(null); 
   
   const [projects, setProjects] = useState([]);
+  const [groups, setGroups] = useState([]);
   
-
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const [activePage, setActivePage] = useState('projects'); 
   const [selectedProject, setSelectedProject] = useState(null);
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const openProject = (project) => {
     setSelectedProject(project);
   };
-  const [groups, setGroups] = useState([]);
 
-  // useEffect voor groepen aggregatie
   useEffect(() => {
     const fetchGroups = async () => {
       if (isAuthenticated && activePage === 'groups') {
@@ -47,23 +46,26 @@ function App() {
         setLoadingText("Alle bedrijfs-groepen in kaart brengen...");
         setProgress(0);
 
-        const token = await getAccessTokenSilently();
-        const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p));
-        
-        setGroups(allGroups);
-        setIsLoading(false);
-        setLoadingText("");
-        setTimeout(() => setProgress(null), 1000);
+        try {
+          const token = await getAccessTokenSilently();
+          const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p));
+          setGroups(allGroups);
+        } catch (error) {
+          console.error("Fout bij ophalen groepen:", error);
+        } finally {
+          setIsLoading(false);
+          setLoadingText("");
+          setTimeout(() => setProgress(null), 1000);
+        }
       }
     };
     fetchGroups();
-  }, [activePage, isAuthenticated, region]);
+  }, [activePage, isAuthenticated, region, getAccessTokenSilently]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  // De losgetrokken data fetch functie
   const loadProjects = async () => {
     if (!isAuthenticated) return;
     
@@ -82,14 +84,62 @@ function App() {
         setProjects([]);
       }
     } catch (error) {
-      console.error("Fout:", error);
+      console.error("Fout bij ophalen projecten:", error);
     } finally {
       setIsLoading(false);
       setLoadingText('');
     }
   };
 
-  // Vuur de functie automatisch af als we op de projects pagina landen of van regio wisselen
+  const handleExportGroupsCSV = async () => {
+    if (!projects || projects.length === 0) return;
+
+    setIsLoading(true);
+    setLoadingText("Live groepsdata en gebruikers ophalen uit de Trimble Cloud...");
+    setProgress(0);
+
+    try {
+      const token = await getAccessTokenSilently();
+      const data = await getAllGroupsWithUsers(token, region, projects, (p) => setProgress(p));
+
+      if (data.length === 0) {
+        alert("Geen groepen of gebruikers gevonden om te exporteren.");
+        return;
+      }
+
+      const headers = ["Project Naam", "Project ID", "Groep Naam", "Groep ID", "Gebruiker Naam", "Gebruiker Email", "Gebruiker Rol"];
+      
+      const csvRows = data.map(row => [
+        `"${row.projectName || ''}"`,
+        `"${row.projectId || ''}"`,
+        `"${row.groupName || ''}"`,
+        `"${row.groupId || ''}"`,
+        `"${row.userName || ''}"`,
+        `"${row.userEmail || ''}"`,
+        `"${row.userRole || ''}"`
+      ].join(','));
+
+      const csvContent = [headers.join(','), ...csvRows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `trimble_groups_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Fout bij exporteren CSV:", error);
+      alert("Er is een fout opgetreden bij het genereren van de CSV.");
+    } finally {
+      setIsLoading(false);
+      setLoadingText("");
+      setTimeout(() => setProgress(null), 1000);
+    }
+  };
+
   useEffect(() => {
     if (activePage === 'projects') {
       loadProjects();
@@ -137,7 +187,7 @@ function App() {
               setRegion={setRegion} 
               searchQuery={searchQuery} 
               setSearchQuery={setSearchQuery}
-              onRefresh={loadProjects} // HIER GEVEN WE DE FUNCTIE DOOR!
+              onRefresh={loadProjects} 
             />
           )}
 
@@ -162,16 +212,34 @@ function App() {
                 </>
               )}
 
-              {activePage === 'users' && <h3>Bedrijfsbreed Gebruikersbeheer</h3>}
+              {activePage === 'users' && (
+                <UserProvisioning projects={projects} region={region} />
+              )}
+              
               {activePage === 'groups' && (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3>Groepen Canvas</h3>
-        <span className="text-muted">Totaal: {groups.length} groepen gevonden over alle projecten</span>
-      </div>
-      <GroupCanvas groups={groups} isLoading={isLoading} />
-    </div>
-  )}
+                <div className="d-flex flex-column h-100">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                      <h3 className="mb-0">Bedrijfsbrede Groepen Audit</h3>
+                      <span className="text-muted small">Totaal: {groups.length} groepen gevonden over {projects.length} projecten</span>
+                    </div>
+                    
+                    <button 
+                      className="btn btn-outline-primary d-flex align-items-center" 
+                      onClick={handleExportGroupsCSV}
+                      disabled={isLoading || projects.length === 0}
+                    >
+                      <ModusIcon name="download-simple" type="duotone" size="20px" extraClasses="me-2" />
+                      Exporteer Live Data (CSV)
+                    </button>
+                  </div>
+                  
+                  <div style={{ flexGrow: 1, overflowY: 'auto' }}>
+                    <GroupCanvas groups={groups} isLoading={isLoading && groups.length === 0} />
+                  </div>
+                </div>
+              )}
+              
               {activePage === 'settings' && <h3>Instellingen</h3>}
             
             </div>

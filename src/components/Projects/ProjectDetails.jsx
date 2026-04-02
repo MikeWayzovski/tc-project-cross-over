@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react';
-import ModusIcon from './ModusIcon';
-import AuthImage from './AuthImage';
-import { getProjectDetails, getMyProjectRole, getProjectUsers, getProjectGroups } from '../api/connectApi';
+import ModusIcon from '../Modus/ModusIcon';
+import AuthImage from '../Shared/AuthImage';
+import { getProjectDetails, getMyProjectRole, getProjectUsers, getProjectGroups } from '../../api/connectApi';
 
 // Helper om bytes om te rekenen naar MB/GB
 const formatBytes = (bytes, decimals = 2) => {

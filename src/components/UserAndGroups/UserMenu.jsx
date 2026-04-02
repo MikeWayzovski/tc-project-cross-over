@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react';
-import ModusIconButton from './ModusIconButton';
-import ModusIcon from './ModusIcon';
-import AuthImage from './AuthImage';
+import ModusIconButton from '../Modus/ModusIconButton';
+import ModusIcon from '../Modus/ModusIcon';
+import AuthImage from '../Shared/AuthImage';
 
 const UserMenu = () => {
   // Haal de benodigde functies uit de Trimble ID SDK [cite: 1550, 1557, 1568, 1581]

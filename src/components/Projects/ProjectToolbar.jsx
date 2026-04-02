@@ -1,5 +1,5 @@
 import React from 'react';
-import ModusIcon from './ModusIcon';
+import ModusIcon from '../Modus/ModusIcon';
 
 const ProjectToolbar = ({ viewMode, setViewMode, region, setRegion, searchQuery, setSearchQuery, onRefresh }) => {
   return (
