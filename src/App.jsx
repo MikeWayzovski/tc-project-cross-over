@@ -8,7 +8,10 @@ import ProjectToolbar from './components/ProjectToolbar';
 import ModusFooter from './components/ModusFooter'; 
 import ProjectGrid from './components/ProjectGrid';
 import ProjectList from './components/ProjectList';
+import ProjectDetails from './components/ProjectDetails';
 import { getProjects } from './api/connectApi'; 
+import GroupCanvas from './components/GroupCanvas';
+import { getAllAccountGroups } from './api/connectApi';
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
@@ -21,8 +24,11 @@ function App() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [progress, setProgress] = useState(null); 
   
   const [projects, setProjects] = useState([]);
+  
+
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const [activePage, setActivePage] = useState('projects'); 
@@ -31,6 +37,27 @@ function App() {
   const openProject = (project) => {
     setSelectedProject(project);
   };
+  const [groups, setGroups] = useState([]);
+
+  // useEffect voor groepen aggregatie
+  useEffect(() => {
+    const fetchGroups = async () => {
+      if (isAuthenticated && activePage === 'groups') {
+        setIsLoading(true);
+        setLoadingText("Alle bedrijfs-groepen in kaart brengen...");
+        setProgress(0);
+
+        const token = await getAccessTokenSilently();
+        const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p));
+        
+        setGroups(allGroups);
+        setIsLoading(false);
+        setLoadingText("");
+        setTimeout(() => setProgress(null), 1000);
+      }
+    };
+    fetchGroups();
+  }, [activePage, isAuthenticated, region]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
@@ -120,14 +147,11 @@ function App() {
               {activePage === 'projects' && (
                 <>
                   {selectedProject ? (
-                    <div>
-                      <button className="btn btn-link p-0 mb-3" onClick={() => setSelectedProject(null)}>
-                        <ModusIcon name="arrow-left" type="duotone" size="16px" extraClasses="me-1" />
-                        Terug naar overzicht
-                      </button>
-                      <h3>Project: {selectedProject.name}</h3>
-                      <p className="text-muted">ID: {selectedProject.id}</p>
-                    </div>
+                    <ProjectDetails 
+                      project={selectedProject} 
+                      region={region} 
+                      onBack={() => setSelectedProject(null)} 
+                    />
                   ) : (
                     viewMode === 'grid' ? (
                       <ProjectGrid projects={projects} searchQuery={searchQuery} onProjectClick={openProject} />
@@ -139,12 +163,20 @@ function App() {
               )}
 
               {activePage === 'users' && <h3>Bedrijfsbreed Gebruikersbeheer</h3>}
-              {activePage === 'groups' && <h3>Organisatie van Gebruikersgroepen</h3>}
+              {activePage === 'groups' && (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h3>Groepen Canvas</h3>
+        <span className="text-muted">Totaal: {groups.length} groepen gevonden over alle projecten</span>
+      </div>
+      <GroupCanvas groups={groups} isLoading={isLoading} />
+    </div>
+  )}
               {activePage === 'settings' && <h3>Instellingen</h3>}
             
             </div>
           </div>
-          <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={null} />
+          <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={progress} />
         </div>
       </div>
     </div>

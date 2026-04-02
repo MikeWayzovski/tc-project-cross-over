@@ -8,7 +8,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-const ProjectGrid = ({ projects, searchQuery }) => {
+const ProjectGrid = ({ projects, searchQuery, onProjectClick }) => {
   
   const filteredProjects = projects.filter(project => 
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -27,8 +27,12 @@ const ProjectGrid = ({ projects, searchQuery }) => {
   return (
     <div className="d-flex flex-wrap gap-4 mt-3">
       {filteredProjects.map(project => (
-        <div key={project.id} className="card shadow-sm border-0" style={{ width: '280px', transition: 'transform 0.2s' }}>
-          
+        <div 
+          key={project.id} 
+          className="card shadow-sm border-0" 
+          style={{ width: '280px', transition: 'transform 0.2s', cursor: 'pointer' }}
+          onClick={() => onProjectClick(project)}
+        >
           {/* AFBEELDING GEDEELTE AANGEPAST */}
           <div className="card-img-top bg-light d-flex justify-content-center align-items-center" style={{ height: '160px', overflow: 'hidden' }}>
             <AuthImage 
