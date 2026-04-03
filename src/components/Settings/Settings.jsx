@@ -36,6 +36,7 @@ const Settings = ({ isDarkMode, setIsDarkMode }) => {
 
   return (
     <div className="settings-page row g-4">
+      {/* LINKERKOLOM: Functionele Instellingen */}
       <div className="col-lg-8">
         <h3 className="mb-4">Applicatie Instellingen</h3>
 
@@ -135,11 +136,12 @@ const Settings = ({ isDarkMode, setIsDarkMode }) => {
             </p>
           </div>
         </div>
-
       </div>
 
-      {/* RECHTERKOLOM: SYSTEM & LOGS */}
+      {/* RECHTERKOLOM: SYSTEM, LOGS & INFO */}
       <div className="col-lg-4">
+        
+        {/* SYSTEEMBEHEER CARD */}
         <div className="card shadow-sm border-danger mb-4">
           <div className="card-header bg-danger text-white fw-bold">
             <ModusIcon name="warning" size="18px" extraClasses="me-2 text-white" />
@@ -176,6 +178,56 @@ const Settings = ({ isDarkMode, setIsDarkMode }) => {
             </div>
           </div>
         </div>
+
+        {/* INFO CARD (De Cherry On Top!) */}
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-body p-4">
+            <div className="d-flex align-items-center mb-3">
+              
+              {/* Linker kant: Schild Icoon met verticale border */}
+              <div className="pe-4 border-end d-flex align-items-center justify-content-center">
+                <ModusIcon name="shield-check" size="64px" extraClasses="text-primary" />
+              </div>
+              
+              {/* Rechter kant: App Informatie */}
+              <div className="ps-4 flex-grow-1">
+                <h5 className="fw-bold text-primary mb-3" style={{ fontSize: '1.2rem' }}>Trimble Sand Box</h5>
+                
+                <ul className="list-unstyled small mb-0">
+                  <li className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted">Versie</span>
+                    <span className="fw-semibold">1.0.0</span>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted">Documentatie</span>
+                    <a href="https://github.com" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted">Extensie Hub</span>
+                    <a href="https://web.connect.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Open Trimble Connect">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted">Modus Framework</span>
+                    <a href="https://modus.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Modus UI Documentatie">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+            
+            {/* Copyright Footer */}
+            <div className="text-center mt-3 pt-3 border-top">
+              <span className="text-muted small">© 2026 MikeWayzovski</span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
