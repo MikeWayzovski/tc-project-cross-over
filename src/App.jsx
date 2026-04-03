@@ -119,6 +119,12 @@ useEffect(() => {
     const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
     if (!hasAccess) return;
     
+    // HIER IS DE SLAGBOOM: Als we in Trimble draaien, maar we weten de regio nog niet... WACHT!
+    if (isEmbedded && !embeddedProject) {
+      Logger.info("Wachten op project details voordat we de lijst laden...");
+      return;
+    }
+    
     setIsLoading(true);
     setLoadingText(`Projecten ophalen uit ${region}...`);
     
@@ -147,7 +153,7 @@ useEffect(() => {
     if (activePage === 'projects') {
       loadProjects();
     }
-  }, [isAuthenticated, embeddedToken, isEmbedded, region, activePage]); 
+  }, [isAuthenticated, embeddedToken, isEmbedded, region, activePage, embeddedProject]);
 
   const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
   if (!hasAccess && !isEmbedded) {
