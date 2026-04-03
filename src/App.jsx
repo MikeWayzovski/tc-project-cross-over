@@ -182,7 +182,16 @@ function App() {
           )}
 
           {activePage === 'projects' && !selectedProject && (
-            <ProjectToolbar viewMode={viewMode} setViewMode={setViewMode} region={region} setRegion={setRegion} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onRefresh={loadProjects} />
+            <ProjectToolbar 
+              viewMode={viewMode} 
+              setViewMode={setViewMode} 
+              region={region} 
+              setRegion={setRegion} 
+              searchQuery={searchQuery} 
+              setSearchQuery={setSearchQuery}
+              onRefresh={loadProjects} 
+              isEmbedded={isEmbedded} // VOEG DEZE REGEL TOE!
+            />
           )}
 
           <div className="modus-content-columns" style={{ flexGrow: 1, overflow: 'hidden' }}>
