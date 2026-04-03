@@ -26,7 +26,7 @@ import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
   
-  const { isEmbedded, workspaceApi, embeddedToken } = useWorkspaceApi();
+  const { isEmbedded, workspaceApi, embeddedToken, embeddedProject } = useWorkspaceApi();
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -69,7 +69,7 @@ useEffect(() => {
     }
   }, [embeddedProject]);
 
-  
+
   // DE FIX VOOR AUTH IMAGE: Sla het actieve token globaal op
   const getValidToken = async () => {
     let token = null;
