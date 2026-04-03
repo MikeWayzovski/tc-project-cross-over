@@ -53,7 +53,7 @@ const ProjectToolbar = ({
         <div className="view-toggle btn-group btn-group-sm me-3" role="group">
           <button 
             type="button" 
-            className={`btn btn-outline-secondary ${viewMode === 'squares-four' ? 'active' : ''}`} 
+            className={`btn btn-outline-secondary ${viewMode === 'apps' ? 'active' : ''}`} 
             onClick={() => setViewMode('grid')}
             title="Raster weergave"
           >
@@ -61,7 +61,7 @@ const ProjectToolbar = ({
           </button>
           <button 
             type="button" 
-            className={`btn btn-outline-secondary ${viewMode === 'list' ? 'active' : ''}`} 
+            className={`btn btn-outline-secondary ${viewMode === 'menu' ? 'active' : ''}`} 
             onClick={() => setViewMode('list')}
             title="Lijst weergave"
           >
