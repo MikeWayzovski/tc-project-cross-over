@@ -42,7 +42,7 @@ const UserProvisioning = ({ projects, region }) => {
         setSourceGroups([]);
         return;
       }
-      const token = await getAccessTokenSilently();
+      const token = window.trimbleSandboxToken || await getAccessTokenSilently();
       const groups = await getProjectGroups(token, region, sourceProjectId);
       setSourceGroups(groups || []);
       setSelectedGroupNames([]); 
@@ -94,7 +94,7 @@ const UserProvisioning = ({ projects, region }) => {
     addLog(`Start onboarding sync voor ${email}...`, 'primary');
 
     try {
-      const token = await getAccessTokenSilently();
+      const token = window.trimbleSandboxToken || await getAccessTokenSilently();
 
       for (const projectId of targetProjectIds) {
         const projName = projects.find(p => p.id === projectId)?.name || projectId;
