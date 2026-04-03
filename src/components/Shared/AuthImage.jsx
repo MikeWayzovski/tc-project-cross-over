@@ -4,18 +4,16 @@ import { useAuth } from '@trimble-oss/trimble-id-react';
 export default function AuthImage({ src, className = "", style = {}, alt = "Afbeelding", fallbackNode = null }) {
   const { getAccessTokenSilently } = useAuth();
   
-  // undefined: aan het laden, null: laden mislukt of geen src, string: blob url
   const [blobUrl, setBlobUrl] = useState(undefined);
 
   useEffect(() => {
-    let isMounted = true; // Zorgt ervoor dat we geen onzichtbare componenten updaten
+    let isMounted = true; 
 
     if (!src) {
       setBlobUrl(null);
       return;
     }
 
-    // Publieke placeholders hoeven we niet met een token op te halen
     if (src.includes('resources.connect.trimble.com') || src.includes('existing_project_with_no_image.svg')) {
       setBlobUrl(src);
       return;
@@ -23,9 +21,9 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
 
     const loadImage = async () => {
       try {
-        const token = await getAccessTokenSilently();
+        // HIER ZIT DE FIX: Pak het globale Trimble token als we in een iframe zitten!
+        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
         
-        // Zorg dat we altijd een absolute URL hebben (Trimble Connect geeft soms relatieve paden terug)
         const fetchUrl = src.startsWith('http') ? src : `https://app.connect.trimble.com${src}`;
         
         const response = await fetch(fetchUrl, {
@@ -40,8 +38,7 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
           setBlobUrl(objectUrl);
         }
       } catch (e) {
-        console.error("Fout bij laden avatar/thumbnail:", e);
-        if (isMounted) setBlobUrl(null); // Fallback status
+        if (isMounted) setBlobUrl(null); 
       }
     };
 
@@ -55,7 +52,6 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
     };
   }, [src, getAccessTokenSilently]);
 
-  // LAAD STATUS: Toon een pulserend Bootstrap vlakje
   if (blobUrl === undefined) {
     return (
       <div className={`${className} placeholder-glow bg-light d-flex align-items-center justify-content-center`} style={style}>
@@ -64,11 +60,9 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
     );
   }
 
-  // FOUT STATUS / GEEN PLAATJE: Toon de fallback (bijv. het ModusIcon)
   if (blobUrl === null) {
     return fallbackNode || <div className={`${className} bg-light`} style={style} />;
   }
 
-  // SUCCES: Toon de beveiligde afbeelding!
   return <img src={blobUrl} className={className} style={style} alt={alt} />;
 }
