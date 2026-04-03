@@ -5,9 +5,9 @@ const tidClient = new TIDClient({
         configurationEndpoint: import.meta.env.VITE_CONFIGURATION_ENDPOINT,
         clientId: import.meta.env.VITE_CLIENT_ID,
 
-        // De veilige, standaard localhost:
-        redirectUrl: "http://localhost:5173/callback",
-        logoutRedirectUrl: "http://localhost:5173/logout-callback",
+        // Dynamische URL's: werkt nu feilloos op zowel localhost als Vercel!
+        redirectUrl: `${window.location.origin}/callback`,
+        logoutRedirectUrl: `${window.location.origin}/logout-callback`,
 
         scopes: [import.meta.env.VITE_SCOPES],
     }
