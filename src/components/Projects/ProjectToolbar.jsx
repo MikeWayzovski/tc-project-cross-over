@@ -1,72 +1,82 @@
 import React from 'react';
 import ModusIcon from '../Modus/ModusIcon';
+import ModusIconButton from '../Modus/ModusIconButton';
 
-const ProjectToolbar = ({ viewMode, setViewMode, region, setRegion, searchQuery, setSearchQuery, onRefresh }) => {
+const ProjectToolbar = ({ 
+  viewMode, 
+  setViewMode, 
+  region, 
+  setRegion, 
+  searchQuery, 
+  setSearchQuery, 
+  onRefresh, 
+  isEmbedded // Voeg 'isEmbedded' toe aan de destructurering van props
+}) => {
   return (
-    <div className="modus-toolbar d-flex justify-content-between align-items-center px-3 border-bottom bg-white" style={{ minHeight: '48px' }}>
+    <div className="toolbar container-fluid bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
       
-      {/* LINKER KANT */}
-      <div className="d-flex align-items-center gap-3">
-        <div className="d-flex align-items-center gap-2">
-          <span className="text-muted small mb-0">Projectserver locatie</span>
-          <div className="dropdown">
-            <button className="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              {region}
-            </button>
-            <ul className="dropdown-menu shadow-sm">
-              <li><button className="dropdown-item" onClick={() => setRegion('Europa')}>Europa</button></li>
-              <li><button className="dropdown-item" onClick={() => setRegion('Noord-Amerika')}>Noord-Amerika</button></li>
-              <li><button className="dropdown-item" onClick={() => setRegion('Azië')}>Azië</button></li>
-              <li><button className="dropdown-item" onClick={() => setRegion('Australië')}>Australië</button></li>
-            </ul>
+      {/* LINKER DEEL: Regio kiezer, Nieuw Project, Verversen */}
+      <div className="d-flex align-items-center">
+        
+        {/* CONDITIONAL RENDERING: Verberg regio kiezer als we Embedded draaien! */}
+        {!isEmbedded && (
+          <div className="region-picker d-flex align-items-center me-4">
+            <label htmlFor="regionSelect" className="me-2 fw-bold text-muted small m-0">Projectserver locatie:</label>
+            <select 
+              id="regionSelect" 
+              className="form-select form-select-sm w-auto" 
+              value={region} 
+              onChange={(e) => setRegion(e.target.value)}
+            >
+              <option value="Europa">Europa</option>
+              <option value="Azië">Azië</option>
+              <option value="Australië">Australië</option>
+              <option value="Noord-Amerika">Noord-Amerika</option>
+            </select>
           </div>
-        </div>
-
-        <div className="vr bg-secondary opacity-25" style={{ height: '24px' }}></div>
-
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-primary btn-sm">Nieuw project</button>
-          
-          {/* HIER IS DE KOPPELING MET ONREFRESH */}
-          <button className="btn btn-icon-only btn-sm text-secondary" title="Vernieuwen" onClick={onRefresh}>
-            <ModusIcon name="arrows-clockwise" type="duotone" size="20px" />
+        )}
+        
+        {/* CONDITIONAL RENDERING: Verberg 'Nieuw project' knop als we Embedded draaien! */}
+        {!isEmbedded && (
+          <button className="btn btn-sm btn-primary d-flex align-items-center me-3">
+            <ModusIcon name="plus" size="18px" extraClasses="me-1" />
+            Nieuw project
           </button>
-        </div>
+        )}
+        
+        {/* Verversen knop - Houden we altijd! */}
+        <ModusIconButton icon="refresh" title="Verversen" onClick={onRefresh} extraClasses="text-primary" />
       </div>
-
-      {/* RECHTER KANT */}
-      <div className="d-flex align-items-center gap-3">
-        <div className="d-flex align-items-center border rounded px-2" style={{ backgroundColor: 'var(--bs-body-bg)' }}>
-          <ModusIcon name="magnifying-glass" type="duotone" size="16px" extraClasses="text-muted" />
-          <input 
-            type="text" 
-            className="form-control form-control-sm border-0 shadow-none bg-transparent" 
-            placeholder="Zoeken..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '200px' }}
-          />
-        </div>
-
-        <div className="vr bg-secondary opacity-25" style={{ height: '24px' }}></div>
-
-        <div className="btn-group" role="group" aria-label="Weergave modus">
+      
+      {/* RECHTER DEEL: Weergave Toggles en Zoeken */}
+      <div className="d-flex align-items-center ms-auto">
+        <div className="view-toggle btn-group btn-group-sm me-3" role="group">
           <button 
-            type="button"
-            className={`btn btn-sm d-flex align-items-center justify-content-center ${viewMode === 'grid' ? 'btn-secondary text-white' : 'btn-outline-secondary'}`}
+            type="button" 
+            className={`btn btn-outline-secondary ${viewMode === 'grid' ? 'active' : ''}`} 
             onClick={() => setViewMode('grid')}
-            title="Card weergave"
+            title="Raster weergave"
           >
-            <ModusIcon name="squares-four" type="duotone" size="20px" />
+            <ModusIcon name="view-grid" size="18px" />
           </button>
           <button 
-            type="button"
-            className={`btn btn-sm d-flex align-items-center justify-content-center ${viewMode === 'list' ? 'btn-secondary text-white' : 'btn-outline-secondary'}`}
+            type="button" 
+            className={`btn btn-outline-secondary ${viewMode === 'list' ? 'active' : ''}`} 
             onClick={() => setViewMode('list')}
             title="Lijst weergave"
           >
-            <ModusIcon name="list" type="duotone" size="20px" />
+            <ModusIcon name="view-list" size="18px" />
           </button>
+        </div>
+        
+        <div className="search-box">
+          <input 
+            type="search" 
+            className="form-control form-control-sm" 
+            placeholder="Projecten zoeken..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
     </div>
