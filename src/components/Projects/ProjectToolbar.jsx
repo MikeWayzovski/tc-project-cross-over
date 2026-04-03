@@ -57,7 +57,7 @@ const ProjectToolbar = ({
             onClick={() => setViewMode('grid')}
             title="Raster weergave"
           >
-            <ModusIcon name="view-grid" size="18px" />
+            <ModusIcon name="apps" size="18px" />
           </button>
           <button 
             type="button" 
@@ -65,7 +65,7 @@ const ProjectToolbar = ({
             onClick={() => setViewMode('list')}
             title="Lijst weergave"
           >
-            <ModusIcon name="view-list" size="18px" />
+            <ModusIcon name="menu" size="18px" />
           </button>
         </div>
         
