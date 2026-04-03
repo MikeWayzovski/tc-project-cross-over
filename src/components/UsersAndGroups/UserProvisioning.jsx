@@ -10,11 +10,26 @@ const UserProvisioning = ({ projects, region }) => {
   
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState(''); 
-  const [role, setRole] = useState('USER');
+  
   const [sourceProjectId, setSourceProjectId] = useState('');
   
-  const [sendInviteEmail, setSendInviteEmail] = useState(true);
-  const [autoCreateGroups, setAutoCreateGroups] = useState(true);
+  // 1. Initialiseer de lokale state met de globale instellingen uit localStorage
+// We gebruiken de '??' (nullish coalescing) om een fallback naar true te hebben als er nog niets is opgeslagen.
+const [sendInviteEmail, setSendInviteEmail] = useState(() => 
+  JSON.parse(localStorage.getItem('trimble_send_invite') ?? 'true')
+);
+
+const [autoCreateGroups, setAutoCreateGroups] = useState(() => 
+  JSON.parse(localStorage.getItem('trimble_auto_create_groups') ?? 'true')
+);
+
+// We doen dit ook voor de standaard rol
+const [role, setRole] = useState(() => 
+  localStorage.getItem('trimble_default_role') || 'USER'
+);
+
+// BELANGRIJK: We voegen GEEN useEffect toe die deze waarden terugschrijft naar localStorage.
+// Hierdoor blijven wijzigingen in dit scherm beperkt tot de huidige 'sessie' (totdat je de app ververst).
 
   const [sourceGroups, setSourceGroups] = useState([]);
   const [selectedGroupNames, setSelectedGroupNames] = useState([]);
