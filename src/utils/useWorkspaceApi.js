@@ -3,17 +3,17 @@ import * as Extensions from "trimble-connect-project-workspace-api";
 import { Logger } from './logger';
 
 export const useWorkspaceApi = () => {
+  // DE FIX: We checken nu direct (synchroon) of de app in een iframe zit.
+  // Zo hoeft React niet te wachten en voorkom je die dubbele API calls!
+  const [isEmbedded] = useState(window !== window.parent);
+  
   const [workspaceApi, setWorkspaceApi] = useState(null);
   const [embeddedToken, setEmbeddedToken] = useState(null);
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  // NIEUW: State voor het actieve project
   const [embeddedProject, setEmbeddedProject] = useState(null); 
 
   useEffect(() => {
-    const inIframe = window !== window.parent;
-    setIsEmbedded(inIframe);
-
-    if (!inIframe) return;
+    // Als we niet in een iframe (Trimble Connect) zitten, stop dan direct.
+    if (!isEmbedded) return;
 
     const initWorkspace = async () => {
       try {
@@ -41,7 +41,7 @@ export const useWorkspaceApi = () => {
         const token = await api.extension.getPermission("accesstoken");
         if (token) setEmbeddedToken(token);
 
-        // NIEUW: Haal het huidige project op waarin de extensie draait!
+        // Haal het huidige project op waarin de extensie draait!
         const projectInfo = await api.project.getCurrentProject();
         Logger.info("Huidig project opgehaald via Workspace API:", projectInfo);
         setEmbeddedProject(projectInfo);
@@ -52,7 +52,7 @@ export const useWorkspaceApi = () => {
     };
 
     initWorkspace();
-  }, []);
+  }, [isEmbedded]);
 
   return { isEmbedded, workspaceApi, embeddedToken, embeddedProject };
 };
