@@ -119,12 +119,28 @@ useEffect(() => {
     const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
     if (!hasAccess) return;
     
-    // HIER IS DE SLAGBOOM: Als we in Trimble draaien, maar we weten de regio nog niet... WACHT!
-    if (isEmbedded && !embeddedProject) {
-      Logger.info("Wachten op project details voordat we de lijst laden...");
-      return;
+    // --- DE DEFINITIEVE SLAGBOOM ---
+    if (isEmbedded) {
+      if (!embeddedProject) {
+        Logger.info("Wachten op project details voordat we de lijst laden...");
+        return;
+      }
+
+      // 1. Wat MOET de regio zijn volgens Trimble?
+      const projLoc = (embeddedProject.location || embeddedProject.region || '').toLowerCase();
+      let expectedRegion = 'Europa';
+      if (projLoc === 'asia') expectedRegion = 'Azië';
+      if (projLoc === 'aus') expectedRegion = 'Australië';
+      if (projLoc === 'na') expectedRegion = 'Noord-Amerika';
+
+      // 2. Is de interne React 'region' al bijgewerkt naar die regio?
+      if (region !== expectedRegion) {
+        Logger.warn(`Tijdelijke stop: React state (${region}) loopt nog fractie achter op Trimble (${expectedRegion}). Wachten...`);
+        return; // We stoppen de call hier! Zodra setRegion() klaar is, start React dit vanzelf opnieuw.
+      }
     }
-    
+    // -------------------------------
+
     setIsLoading(true);
     setLoadingText(`Projecten ophalen uit ${region}...`);
     
