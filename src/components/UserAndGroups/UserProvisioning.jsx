@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react';
 import ModusIcon from '../Modus/ModusIcon';
-import { 
-  getProjectGroups, 
-  addUserToProject, 
-  addUserToGroup, 
-  createProjectGroup,
-  getUserByEmail,
-  getGroupUsers,
-  removeUserFromGroup
-} from '../../api/connectApi';
+import { getProjectGroups, createProjectGroup, addUserToGroup, removeUserFromGroup, getGroupUsers } from '../../api/groupsApi';
+import { addUserToProject, getUserByEmail } from '../../api/usersApi';
+import { Logger } from '../../utils/logger';
 
 const UserProvisioning = ({ projects, region }) => {
   const { getAccessTokenSilently } = useAuth();

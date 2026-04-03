@@ -12,7 +12,8 @@ import ProjectDetails from './components/Projects/ProjectDetails';
 import GroupCanvas from './components/UserAndGroups/GroupCanvas';
 import UserProvisioning from './components/UserAndGroups/UserProvisioning';
 import ModusIcon from './components/Modus/ModusIcon'; // Zorg dat deze import er staat voor de CSV knop
-import { getProjects, getAllAccountGroups, getAllGroupsWithUsers } from './api/connectApi';
+import { getProjects } from './api/projectsApi';
+import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
