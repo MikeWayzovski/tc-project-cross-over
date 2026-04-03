@@ -6,22 +6,22 @@ export const useWorkspaceApi = () => {
   const [workspaceApi, setWorkspaceApi] = useState(null);
   const [embeddedToken, setEmbeddedToken] = useState(null);
   const [isEmbedded, setIsEmbedded] = useState(false);
+  // NIEUW: State voor het actieve project
+  const [embeddedProject, setEmbeddedProject] = useState(null); 
 
   useEffect(() => {
-    // Simpele check: draaien we in een Iframe (Trimble Connect) of als losse site?
     const inIframe = window !== window.parent;
     setIsEmbedded(inIframe);
 
-    if (!inIframe) return; // Stop als we niet in Trimble Connect zitten
+    if (!inIframe) return;
 
     const initWorkspace = async () => {
       try {
-        // 1. Maak connectie met de parent window (Trimble Connect)
         const api = await Extensions.connect(
           window.parent,
           (event, args) => {
             if (event === "extension.command") {
-              Logger.info(`Menu commando ontvangen: ${args.data}`);
+              Logger.info(`Menu commando: ${args.data}`);
             } else if (event === "extension.accessToken") {
               setEmbeddedToken(args.data);
             }
@@ -31,30 +31,28 @@ export const useWorkspaceApi = () => {
 
         setWorkspaceApi(api);
 
-        // 2. Stel het linkermenu in met jouw eigen logo!
         const mainMenuObject = {
           title: "Trimble Sand Box",
-          icon: `${window.location.origin}/mijn-logo.svg`, // Zorg dat dit bestand in je public map staat
+          icon: `${window.location.origin}/mijn-logo.svg`,
           command: "SANDBOX_MAIN_MENU"
         };
-        
         await api.ui.setMenu(mainMenuObject);
-        Logger.success("Workspace API verbonden en menu ingesteld.");
-
-        // 3. Vraag direct het access token op zonder opnieuw in te loggen
+        
         const token = await api.extension.getPermission("accesstoken");
-        if (token) {
-          setEmbeddedToken(token);
-          Logger.success("Embedded Access Token succesvol ontvangen.");
-        }
+        if (token) setEmbeddedToken(token);
+
+        // NIEUW: Haal het huidige project op waarin de extensie draait!
+        const projectInfo = await api.project.getCurrentProject();
+        Logger.info("Huidig project opgehaald via Workspace API:", projectInfo);
+        setEmbeddedProject(projectInfo);
 
       } catch (error) {
-        Logger.error("Kon niet verbinden met Trimble Workspace API", error.message);
+        Logger.error("Fout in Workspace API connectie:", error.message);
       }
     };
 
     initWorkspace();
   }, []);
 
-  return { isEmbedded, workspaceApi, embeddedToken };
+  return { isEmbedded, workspaceApi, embeddedToken, embeddedProject };
 };

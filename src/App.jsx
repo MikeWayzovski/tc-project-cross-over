@@ -50,6 +50,26 @@ function App() {
     setSelectedProject(project);
   };
 
+useEffect(() => {
+    if (embeddedProject) {
+      // Afhankelijk van de exacte benaming in de ConnectProject interface, is dit vaak 'location' of 'region'.
+      // We loggen hem al via de Logger, dus je kunt in de console precies zien hoe de property heet!
+      const projectRegion = embeddedProject.location || embeddedProject.region; 
+      
+      if (projectRegion) {
+        // Zorg dat de API regiokey overeenkomt met jouw mapping (bijv. 'eu' -> 'Europa')
+        let mappedRegion = 'Europa';
+        if (projectRegion.toLowerCase() === 'asia') mappedRegion = 'Azië';
+        if (projectRegion.toLowerCase() === 'aus') mappedRegion = 'Australië';
+        if (projectRegion.toLowerCase() === 'na') mappedRegion = 'Noord-Amerika';
+        
+        setRegion(mappedRegion);
+        Logger.info(`Regio automatisch ingesteld op ${mappedRegion} via embedded project.`);
+      }
+    }
+  }, [embeddedProject]);
+
+  
   // DE FIX VOOR AUTH IMAGE: Sla het actieve token globaal op
   const getValidToken = async () => {
     let token = null;
