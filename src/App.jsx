@@ -22,6 +22,9 @@ import ProjectDetails from './components/Projects/ProjectDetails';
 
 import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
+// Importeren van Settings component
+import Settings from './components/Settings/Settings';
+
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
@@ -268,7 +271,12 @@ useEffect(() => {
                 </div>
               )}
               
-              {activePage === 'settings' && <h3>Instellingen</h3>}
+              {activePage === 'settings' && (
+                <Settings 
+                isDarkMode={isDarkMode} 
+                setIsDarkMode={setIsDarkMode} 
+               />
+              )}
             
             </div>
           </div>
