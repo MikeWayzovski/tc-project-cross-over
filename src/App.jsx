@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
-
 import ModusIconButton from './components/Modus/ModusIconButton';
 import ModusSidebar from './components/Modus/ModusSidebar';
-import ModusFooter from './components/Modus/ModusFooter'; 
-import ModusIcon from './components/Modus/ModusIcon';
-
-import UserMenu from './components/UsersAndGroups/UserMenu';
-import GroupCanvas from './components/UsersAndGroups/GroupCanvas';
-import UserProvisioning from './components/UsersAndGroups/UserProvisioning';
-
+import UserMenu from './components/UserAndGroups/UserMenu';
 import ProjectToolbar from './components/Projects/ProjectToolbar'; 
+import ModusFooter from './components/Modus/ModusFooter'; 
 import ProjectGrid from './components/Projects/ProjectGrid';
 import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
-
-// Importeer je vernieuwde API's en de nieuwe hook!
+import GroupCanvas from './components/UserAndGroups/GroupCanvas';
+import UserProvisioning from './components/UserAndGroups/UserProvisioning';
+import ModusIcon from './components/Modus/ModusIcon'; // Zorg dat deze import er staat voor de CSV knop
 import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
+
+// Importeer je vernieuwde API's en de nieuwe hook!
+
 import { useWorkspaceApi } from './utils/useWorkspaceApi';
 import { Logger } from './utils/logger';
 
