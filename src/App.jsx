@@ -23,7 +23,6 @@ import ProjectDetails from './components/Projects/ProjectDetails';
 import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import { useWorkspaceApi } from './utils/useWorkspaceApi';
-import { Logger } from './utils/logger';
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
