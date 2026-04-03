@@ -200,7 +200,7 @@ const Settings = ({ isDarkMode, setIsDarkMode }) => {
                   </li>
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Documentatie</span>
-                    <a href="https://github.com" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
+                    <a href="https://github.com/Jackdemoel/modus-sandbox" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
                       <ModusIcon name="external-link" size="16px" />
                     </a>
                   </li>
