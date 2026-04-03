@@ -1,0 +1,8 @@
+{
+  "title": "Trimble Sand Box",
+  "description": "Bedrijfsbrede groepen audit en user provisioning tool.",
+  "icon": "https://modus-sandbox.vercel.app/trimble.svg",
+  "url": "https://modus-sandbox.vercel.app/",
+  "configCommand": "open_settings",
+  "enabled": true
+}
