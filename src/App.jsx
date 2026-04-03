@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
+
 import ModusIconButton from './components/Modus/ModusIconButton';
 import ModusSidebar from './components/Modus/ModusSidebar';
-import UserMenu from './components/UserAndGroups/UserMenu';
-import ProjectToolbar from './components/Projects/ProjectToolbar'; 
 import ModusFooter from './components/Modus/ModusFooter'; 
+import ModusIcon from './components/Modus/ModusIcon';
+
+import UserMenu from './components/UsersAndGroups/UserMenu';
+import GroupCanvas from './components/UsersAndGroups/GroupCanvas';
+import UserProvisioning from './components/UsersAndGroups/UserProvisioning';
+
+import ProjectToolbar from './components/Projects/ProjectToolbar'; 
 import ProjectGrid from './components/Projects/ProjectGrid';
 import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
-import GroupCanvas from './components/UserAndGroups/GroupCanvas';
-import UserProvisioning from './components/UserAndGroups/UserProvisioning';
-import ModusIcon from './components/Modus/ModusIcon'; // Zorg dat deze import er staat voor de CSV knop
+
+// Importeer je vernieuwde API's en de nieuwe hook!
 import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
+import { useWorkspaceApi } from './utils/useWorkspaceApi';
+import { Logger } from './utils/logger';
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
+  
+  // 1. HAAL DE WORKSPACE DATA OP
+  const { isEmbedded, workspaceApi, embeddedToken } = useWorkspaceApi();
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -40,19 +50,33 @@ function App() {
     setSelectedProject(project);
   };
 
+  // 2. SLIMME TOKEN HELPER
+  const getValidToken = async () => {
+    if (isEmbedded && embeddedToken) {
+      return embeddedToken;
+    }
+    if (isAuthenticated) {
+      return await getAccessTokenSilently();
+    }
+    throw new Error("Geen geldig token beschikbaar.");
+  };
+
+  // 3. PAS DE CHECKS AAN (isAuthenticated OF embeddedToken)
   useEffect(() => {
     const fetchGroups = async () => {
-      if (isAuthenticated && activePage === 'groups') {
+      const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
+      
+      if (hasAccess && activePage === 'groups') {
         setIsLoading(true);
         setLoadingText("Alle bedrijfs-groepen in kaart brengen...");
         setProgress(0);
 
         try {
-          const token = await getAccessTokenSilently();
+          const token = await getValidToken();
           const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p));
           setGroups(allGroups);
         } catch (error) {
-          console.error("Fout bij ophalen groepen:", error);
+          Logger.error("Fout bij ophalen bedrijfsbrede groepen:", error);
         } finally {
           setIsLoading(false);
           setLoadingText("");
@@ -61,20 +85,21 @@ function App() {
       }
     };
     fetchGroups();
-  }, [activePage, isAuthenticated, region, getAccessTokenSilently]);
+  }, [activePage, isAuthenticated, embeddedToken, isEmbedded, region]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
   const loadProjects = async () => {
-    if (!isAuthenticated) return;
+    const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
+    if (!hasAccess) return;
     
     setIsLoading(true);
     setLoadingText(`Projecten ophalen uit ${region}...`);
     
     try {
-      const token = await getAccessTokenSilently();
+      const token = await getValidToken();
       const fetchedProjects = await getProjects(token, region);
       
       if (Array.isArray(fetchedProjects)) {
@@ -85,7 +110,7 @@ function App() {
         setProjects([]);
       }
     } catch (error) {
-      console.error("Fout bij ophalen projecten:", error);
+      Logger.error("Fout bij ophalen projecten:", error);
     } finally {
       setIsLoading(false);
       setLoadingText('');
@@ -100,7 +125,7 @@ function App() {
     setProgress(0);
 
     try {
-      const token = await getAccessTokenSilently();
+      const token = await getValidToken();
       const data = await getAllGroupsWithUsers(token, region, projects, (p) => setProgress(p));
 
       if (data.length === 0) {
@@ -131,8 +156,9 @@ function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      Logger.success("CSV Export succesvol voltooid.");
     } catch (error) {
-      console.error("Fout bij exporteren CSV:", error);
+      Logger.error("Fout bij exporteren CSV:", error);
       alert("Er is een fout opgetreden bij het genereren van de CSV.");
     } finally {
       setIsLoading(false);
@@ -145,38 +171,52 @@ function App() {
     if (activePage === 'projects') {
       loadProjects();
     }
-  }, [isAuthenticated, region, activePage, getAccessTokenSilently]); 
+  }, [isAuthenticated, embeddedToken, isEmbedded, region, activePage]); 
+
+  // Als de applicatie nog wacht op een login (of embedded token), toon dan niets of een login-scherm
+  const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
+  if (!hasAccess && !isEmbedded) {
+    // Opmerking: TrimbleAuth provider regelt normaal gesproken de redirect, 
+    // maar dit voorkomt dat de app crasht terwijl hij wacht.
+    return <div className="p-5 text-center">Wachten op authenticatie...</div>;
+  }
 
   return (
     <div className="modus-layout">
-      {/* HEADER */}
-      <nav className="navbar navbar-expand-lg modus-header bg-primary">
-        <div className="container-fluid align-items-center">
-          <div className="d-flex align-items-center">
-            <ModusIconButton icon="menu" onClick={toggleSidebar} ariaLabel="Menu" extraClasses="text-white me-3" />
-            <a className="navbar-brand d-flex align-items-center text-white m-0" href="/">
-              <img src={trimbleLogo} alt="Trimble Logo" height="28" className="me-2" />
-              <span style={{ fontSize: '1.25rem', fontWeight: '600' }}>Trimble Sand Box</span>
-            </a>
+      {/* HEADER: We verbergen de header (of passen deze aan) als we al in Trimble Connect zitten! */}
+      {!isEmbedded && (
+        <nav className="navbar navbar-expand-lg modus-header bg-primary">
+          <div className="container-fluid align-items-center">
+            <div className="d-flex align-items-center">
+              <ModusIconButton icon="menu" onClick={toggleSidebar} ariaLabel="Menu" extraClasses="text-white me-3" />
+              <a className="navbar-brand d-flex align-items-center text-white m-0" href="/">
+                <img src={trimbleLogo} alt="Trimble Logo" height="28" className="me-2" />
+                <span style={{ fontSize: '1.25rem', fontWeight: '600' }}>Trimble Sand Box</span>
+              </a>
+            </div>
+            <div className="d-flex align-items-center ms-auto">
+              <ModusIconButton icon={isDarkMode ? "sun" : "moon"} onClick={() => setIsDarkMode(!isDarkMode)} ariaLabel="Thema" extraClasses="text-white me-2" />
+              <ModusIconButton icon="apps" ariaLabel="Applicaties" extraClasses="text-white me-2" />
+              <UserMenu />
+            </div>
           </div>
-          <div className="d-flex align-items-center ms-auto">
-            <ModusIconButton icon={isDarkMode ? "sun" : "moon"} onClick={() => setIsDarkMode(!isDarkMode)} ariaLabel="Thema" extraClasses="text-white me-2" />
-            <ModusIconButton icon="apps" ariaLabel="Applicaties" extraClasses="text-white me-2" />
-            <UserMenu />
-          </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* BODY */}
-      <div className={`modus-body sidebar-open ${!isSidebarOpen ? 'mini-sidebar-active' : ''}`}>
-        <ModusSidebar 
-          isOpen={isSidebarOpen} 
-          activePage={activePage} 
-          onPageChange={(id) => {
-            setActivePage(id);
-            setSelectedProject(null); 
-          }} 
-        />
+      <div className={`modus-body sidebar-open ${!isSidebarOpen || isEmbedded ? 'mini-sidebar-active' : ''}`}>
+        
+        {/* Als we als Extensie draaien, regelt Trimble het linker menu. Lokaal tonen we hem wel. */}
+        {!isEmbedded && (
+          <ModusSidebar 
+            isOpen={isSidebarOpen} 
+            activePage={activePage} 
+            onPageChange={(id) => {
+              setActivePage(id);
+              setSelectedProject(null); 
+            }} 
+          />
+        )}
 
         <div className="modus-content-rows" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
           

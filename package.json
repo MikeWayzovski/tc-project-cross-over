@@ -19,6 +19,7 @@
     "bootstrap": "^5.3.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "trimble-connect-project-workspace-api": "^0.1.5",
     "trimble-connect-sdk": "^4.0.11"
   },
   "devDependencies": {
