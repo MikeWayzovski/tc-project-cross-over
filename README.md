@@ -27,3 +27,27 @@ To use this application as an integrated tool inside Trimble Connect, you need t
 4. Paste the following **Extension Manifest URL**:
    ```text
    [https://modus-sandbox.vercel.app/manifest.json](https://modus-sandbox.vercel.app/manifest.json)
+Click Add or Submit.
+
+Ensure the toggle switch next to "Trimble Sand Box" is set to ON.
+
+Refresh the page. You will now see the application in the left navigation panel (look for the graduation cap icon).
+
+💻 Standalone Usage
+If you prefer to run the application outside of the Trimble Connect iframe, simply visit the application URL directly:
+👉 https://modus-sandbox.vercel.app
+
+Note: When running standalone, you will be prompted to log in using your Trimble ID credentials.
+
+🛠 Tech Stack
+Frontend: React.js + Vite
+
+UI Framework: Trimble Modus UI (Bootstrap)
+
+Authentication: @trimble-oss/trimble-id-react
+
+API Integration: trimble-connect-project-workspace-api
+
+Hosting: Vercel
+
+Developed as a robust sandbox and management tool for Trimble Connect workflows.
