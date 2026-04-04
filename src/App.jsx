@@ -57,9 +57,14 @@ function App() {
   };
 
   // Functie die aangeroepen wordt als de wizard op "Aanmaken" klikt (Nu nog een placeholder)
-  const handleCloneSubmit = (cloneData) => {
+  const handleCloneSubmit = async (cloneData) => {
     Logger.info("Kloon data ontvangen uit wizard:", cloneData);
-    alert(`Opdracht voor klonen van '${cloneData.newProjectName}' ontvangen! (Fase 1 API integratie volgt)`);
+    
+    // Sluit de wizard en toon eventueel de laad-spinner (als je die state gebruikt)
+    setCloningProject(null); 
+    setIsLoading(true);
+    setLoadingText(`Kloon-opdracht naar Trimble sturen...`);
+
     try {
       const token = await getValidToken();
       const cloneResponse = await cloneProject(token, region, cloneData);
@@ -71,9 +76,12 @@ function App() {
       
     } catch (error) {
       Logger.error("Fout bij klonen van project:", error);
-      alert("Er is een fout opgetreden bij het klonen van het project.");
+      alert("Er is een fout opgetreden bij het klonen van het project. Check de logs voor meer details.");
+    } finally {
+      // Zet de laad-animatie weer uit, of het nu gelukt is of niet
+      setIsLoading(false);
+      setLoadingText('');
     }
-    setCloningProject(null); // Sluit de wizard na het indienen
   };
 
   useEffect(() => {
