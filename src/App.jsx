@@ -1,10 +1,9 @@
-// Importeer je vernieuwde API's en de nieuwe hook!
-
-import { useWorkspaceApi } from './utils/useWorkspaceApi';
-import { Logger } from './utils/logger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
+
+import { useWorkspaceApi } from './utils/useWorkspaceApi';
+import { Logger } from './utils/logger';
 
 import ModusIconButton from './components/Modus/ModusIconButton';
 import ModusSidebar from './components/Modus/ModusSidebar';
@@ -19,18 +18,17 @@ import ProjectToolbar from './components/Projects/ProjectToolbar';
 import ProjectGrid from './components/Projects/ProjectGrid';
 import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
+import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; // 1. WIZARD GEÏMPORTEERD
 
 import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
-// Importeren van Settings component
 import Settings from './components/Settings/Settings';
-
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
-  
   const { isEmbedded, workspaceApi, embeddedToken, embeddedProject } = useWorkspaceApi();
   
+  // -- STATE MANAGEMENT --
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState('grid'); 
@@ -46,21 +44,30 @@ function App() {
   
   const [activePage, setActivePage] = useState('projects'); 
   const [selectedProject, setSelectedProject] = useState(null);
+  
+  // 2. NIEUWE STATE VOOR DE KLOON WIZARD
+  const [cloningProject, setCloningProject] = useState(null);
 
+  // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const openProject = (project) => {
     setSelectedProject(project);
+    setCloningProject(null); // Zorg dat de wizard sluit als we een project openen
   };
 
-useEffect(() => {
+  // Functie die aangeroepen wordt als de wizard op "Aanmaken" klikt (Nu nog een placeholder)
+  const handleCloneSubmit = (cloneData) => {
+    Logger.info("Kloon data ontvangen uit wizard:", cloneData);
+    alert(`Opdracht voor klonen van '${cloneData.newProjectName}' ontvangen! (Fase 1 API integratie volgt)`);
+    setCloningProject(null);
+  };
+
+  useEffect(() => {
     if (embeddedProject) {
-      // Afhankelijk van de exacte benaming in de ConnectProject interface, is dit vaak 'location' of 'region'.
-      // We loggen hem al via de Logger, dus je kunt in de console precies zien hoe de property heet!
       const projectRegion = embeddedProject.location || embeddedProject.region; 
       
       if (projectRegion) {
-        // Zorg dat de API regiokey overeenkomt met jouw mapping (bijv. 'eu' -> 'Europa')
         let mappedRegion = 'Europa';
         if (projectRegion.toLowerCase() === 'asia') mappedRegion = 'Azië';
         if (projectRegion.toLowerCase() === 'aus') mappedRegion = 'Australië';
@@ -72,8 +79,6 @@ useEffect(() => {
     }
   }, [embeddedProject]);
 
-
-  // DE FIX VOOR AUTH IMAGE: Sla het actieve token globaal op
   const getValidToken = async () => {
     let token = null;
     if (isEmbedded && embeddedToken) {
@@ -83,7 +88,7 @@ useEffect(() => {
     }
     
     if (token) {
-      window.trimbleSandboxToken = token; // Sla op voor AuthImage.jsx!
+      window.trimbleSandboxToken = token; 
       return token;
     }
     throw new Error("Geen geldig token beschikbaar.");
@@ -122,27 +127,23 @@ useEffect(() => {
     const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
     if (!hasAccess) return;
     
-    // --- DE DEFINITIEVE SLAGBOOM ---
     if (isEmbedded) {
       if (!embeddedProject) {
         Logger.info("Wachten op project details voordat we de lijst laden...");
         return;
       }
 
-      // 1. Wat MOET de regio zijn volgens Trimble?
       const projLoc = (embeddedProject.location || embeddedProject.region || '').toLowerCase();
       let expectedRegion = 'Europa';
       if (projLoc === 'asia') expectedRegion = 'Azië';
       if (projLoc === 'aus') expectedRegion = 'Australië';
       if (projLoc === 'na') expectedRegion = 'Noord-Amerika';
 
-      // 2. Is de interne React 'region' al bijgewerkt naar die regio?
       if (region !== expectedRegion) {
         Logger.warn(`Tijdelijke stop: React state (${region}) loopt nog fractie achter op Trimble (${expectedRegion}). Wachten...`);
-        return; // We stoppen de call hier! Zodra setRegion() klaar is, start React dit vanzelf opnieuw.
+        return; 
       }
     }
-    // -------------------------------
 
     setIsLoading(true);
     setLoadingText(`Projecten ophalen uit ${region}...`);
@@ -181,7 +182,7 @@ useEffect(() => {
 
   return (
     <div className="modus-layout">
-      {/* HEADER: Alleen lokaal zichtbaar */}
+      {/* HEADER */}
       {!isEmbedded && (
         <nav className="navbar navbar-expand-lg modus-header bg-primary">
           <div className="container-fluid align-items-center">
@@ -199,34 +200,43 @@ useEffect(() => {
       {/* BODY */}
       <div className={`modus-body sidebar-open ${!isSidebarOpen || isEmbedded ? 'mini-sidebar-active' : ''}`}>
         
-        {/* ZIJBALK: Alleen lokaal zichtbaar */}
+        {/* ZIJBALK */}
         {!isEmbedded && (
-          <ModusSidebar isOpen={isSidebarOpen} activePage={activePage} onPageChange={(id) => { setActivePage(id); setSelectedProject(null); }} />
+          <ModusSidebar 
+            isOpen={isSidebarOpen} 
+            activePage={activePage} 
+            onPageChange={(id) => { 
+              setActivePage(id); 
+              setSelectedProject(null); 
+              setCloningProject(null); 
+            }} 
+          />
         )}
 
         <div className="modus-content-rows" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
           
-          {/* NIEUW: HORIZONTALE NAVIGATIE (Alleen zichtbaar als we in Trimble Connect draaien) */}
+          {/* HORIZONTALE NAVIGATIE (Embedded) */}
           {isEmbedded && (
             <div className="bg-light border-bottom px-3 pt-2">
               <ul className="nav nav-tabs border-bottom-0">
                 <li className="nav-item">
-                  <button className={`nav-link text-dark ${activePage === 'projects' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('projects'); setSelectedProject(null); }}>Projecten</button>
+                  <button className={`nav-link text-dark ${activePage === 'projects' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('projects'); setSelectedProject(null); setCloningProject(null); }}>Projecten</button>
                 </li>
                 <li className="nav-item">
-                  <button className={`nav-link text-dark ${activePage === 'users' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('users'); setSelectedProject(null); }}>Gebruikers</button>
+                  <button className={`nav-link text-dark ${activePage === 'users' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('users'); setSelectedProject(null); setCloningProject(null); }}>Gebruikers</button>
                 </li>
                 <li className="nav-item">
-                  <button className={`nav-link text-dark ${activePage === 'groups' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('groups'); setSelectedProject(null); }}>Groepen</button>
+                  <button className={`nav-link text-dark ${activePage === 'groups' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('groups'); setSelectedProject(null); setCloningProject(null); }}>Groepen</button>
                 </li>
                 <li className="nav-item">
-                  <button className={`nav-link text-dark ${activePage === 'settings' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('settings'); setSelectedProject(null); }}>Instellingen</button>
+                  <button className={`nav-link text-dark ${activePage === 'settings' ? 'active fw-bold' : ''}`} onClick={() => { setActivePage('settings'); setSelectedProject(null); setCloningProject(null); }}>Instellingen</button>
                 </li>
               </ul>
             </div>
           )}
 
-          {activePage === 'projects' && !selectedProject && (
+          {/* PROJECT TOOLBAR: Verborgen als we een project bekijken OF klonen */}
+          {activePage === 'projects' && !selectedProject && !cloningProject && (
             <ProjectToolbar 
               viewMode={viewMode} 
               setViewMode={setViewMode} 
@@ -235,7 +245,7 @@ useEffect(() => {
               searchQuery={searchQuery} 
               setSearchQuery={setSearchQuery}
               onRefresh={loadProjects} 
-              isEmbedded={isEmbedded} // VOEG DEZE REGEL TOE!
+              isEmbedded={isEmbedded} 
             />
           )}
 
@@ -244,13 +254,34 @@ useEffect(() => {
               
               {activePage === 'projects' && (
                 <>
-                  {selectedProject ? (
-                    <ProjectDetails project={selectedProject} region={region} onBack={() => setSelectedProject(null)} />
+                  {cloningProject ? (
+                    // 3. TOON DE WIZARD ALS CLONINGPROJECT GEVULD IS
+                    <ProjectCloneWizard 
+                      sourceProject={cloningProject} 
+                      onClose={() => setCloningProject(null)} 
+                      onClone={handleCloneSubmit} 
+                    />
+                  ) : selectedProject ? (
+                    <ProjectDetails 
+                      project={selectedProject} 
+                      region={region} 
+                      onBack={() => setSelectedProject(null)} 
+                    />
                   ) : (
                     viewMode === 'grid' ? (
-                      <ProjectGrid projects={projects} searchQuery={searchQuery} onProjectClick={openProject} />
+                      <ProjectGrid 
+                        projects={projects} 
+                        searchQuery={searchQuery} 
+                        onProjectClick={openProject} 
+                        onCloneClick={(p) => setCloningProject(p)} 
+                      />
                     ) : (
-                      <ProjectList projects={projects} searchQuery={searchQuery} onProjectClick={openProject} />
+                      <ProjectList 
+                        projects={projects} 
+                        searchQuery={searchQuery} 
+                        onProjectClick={openProject} 
+                        onCloneClick={(p) => setCloningProject(p)} 
+                      />
                     )
                   )}
                 </>
@@ -273,9 +304,9 @@ useEffect(() => {
               
               {activePage === 'settings' && (
                 <Settings 
-                isDarkMode={isDarkMode} 
-                setIsDarkMode={setIsDarkMode} 
-               />
+                  isDarkMode={isDarkMode} 
+                  setIsDarkMode={setIsDarkMode} 
+                />
               )}
             
             </div>

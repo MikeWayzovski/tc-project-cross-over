@@ -1,6 +1,6 @@
 import React from 'react';
 import ModusIcon from '../Modus/ModusIcon';
-import AuthImage from '../Shared/AuthImage'; // 1. IMPORT TOEGEVOEGD!
+import AuthImage from '../Shared/AuthImage';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Onbekend';
@@ -8,7 +8,8 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-const ProjectGrid = ({ projects, searchQuery, onProjectClick }) => {
+// NIEUW: onCloneClick toegevoegd aan de props!
+const ProjectGrid = ({ projects, searchQuery, onProjectClick, onCloneClick }) => {
   
   const filteredProjects = projects.filter(project => 
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -33,7 +34,6 @@ const ProjectGrid = ({ projects, searchQuery, onProjectClick }) => {
           style={{ width: '280px', transition: 'transform 0.2s', cursor: 'pointer' }}
           onClick={() => onProjectClick(project)}
         >
-          {/* AFBEELDING GEDEELTE AANGEPAST */}
           <div className="card-img-top bg-light d-flex justify-content-center align-items-center" style={{ height: '160px', overflow: 'hidden' }}>
             <AuthImage 
               src={project.thumbnail} 
@@ -51,7 +51,18 @@ const ProjectGrid = ({ projects, searchQuery, onProjectClick }) => {
                <button className="btn btn-icon-only btn-sm btn-outline-secondary border-0"><ModusIcon name="star" type="duotone" size="18px" /></button>
                <button className="btn btn-icon-only btn-sm btn-outline-secondary border-0"><ModusIcon name="download-simple" type="duotone" size="18px" /></button>
                <button className="btn btn-icon-only btn-sm btn-outline-secondary border-0"><ModusIcon name="share-network" type="duotone" size="18px" /></button>
-               <button className="btn btn-icon-only btn-sm btn-outline-secondary border-0 ms-auto"><ModusIcon name="list" type="duotone" size="18px" /></button>
+               
+               {/* HIER ZIT DE NIEUWE LOGICA! */}
+               <button 
+                 className="btn btn-icon-only btn-sm btn-outline-primary border-0 ms-auto"
+                 title="Nieuw project genereren (Geavanceerd Sjabloon)"
+                 onClick={(e) => {
+                   e.stopPropagation(); // Zorg dat we het project niet per ongeluk openen!
+                   if(onCloneClick) onCloneClick(project); // Stuur het gekozen project door naar App.jsx
+                 }}
+               >
+                 <ModusIcon name="copy" type="duotone" size="18px" />
+               </button>
             </div>
           </div>
 
