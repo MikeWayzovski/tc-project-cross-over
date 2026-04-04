@@ -4,7 +4,8 @@ import { Logger } from '../utils/logger';
 export const getProjects = async (token, regionName) => {
   const baseUrl = getBaseUrlForRegion(regionName);
   try {
-    const response = await fetch(`${baseUrl}/tc/api/2.0/projects`, {
+    // Aangepast: baseUrl bevat al /tc/api/2.0
+    const response = await fetch(`${baseUrl}/projects`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
     });
 
@@ -22,7 +23,8 @@ export const getProjects = async (token, regionName) => {
 export const getProjectDetails = async (token, regionName, projectId) => {
   const baseUrl = getBaseUrlForRegion(regionName);
   try {
-    const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}?fullyLoaded=true`, {
+    // Aangepast: baseUrl bevat al /tc/api/2.0
+    const response = await fetch(`${baseUrl}/projects/${projectId}?fullyLoaded=true`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
     });
     if (!response.ok) throw new Error("Fout bij ophalen project details");
@@ -34,23 +36,19 @@ export const getProjectDetails = async (token, regionName, projectId) => {
 };
 
 export const cloneProject = async (token, region, cloneData) => {
-  // Gebruik de correcte helper functie!
   const baseUrl = getBaseUrlForRegion(region);
   const url = `${baseUrl}/projects/clones`;
 
-  // Vertaal de wizard-vinkjes naar de Trimble 'include' array
   const includeItems = [];
   if (cloneData.options.copySettings) includeItems.push("settings");
   if (cloneData.options.copyMembers) includeItems.push("users");
   if (cloneData.options.copyGroups) includeItems.push("groups");
   
-  // Als mappen mee moeten, moeten de rechten (folderPermissions) ook mee
   if (cloneData.options.copyFolders) {
     includeItems.push("folders");
     includeItems.push("folderPermissions"); 
   }
 
-  // Fallback naar alles
   const finalInclude = includeItems.length > 0 ? includeItems : ["*"];
 
   const payload = {

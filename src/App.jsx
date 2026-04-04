@@ -18,9 +18,10 @@ import ProjectToolbar from './components/Projects/ProjectToolbar';
 import ProjectGrid from './components/Projects/ProjectGrid';
 import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
-import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; // 1. WIZARD GEÏMPORTEERD
+import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
 
-import { getProjects } from './api/projectsApi';
+// HIER WAS DE FOUT: cloneProject is nu netjes geïmporteerd!
+import { getProjects, cloneProject } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 
@@ -45,7 +46,6 @@ function App() {
   const [activePage, setActivePage] = useState('projects'); 
   const [selectedProject, setSelectedProject] = useState(null);
   
-  // 2. NIEUWE STATE VOOR DE KLOON WIZARD
   const [cloningProject, setCloningProject] = useState(null);
 
   // -- LOGICA & FUNCTIES --
@@ -53,53 +53,32 @@ function App() {
 
   const openProject = (project) => {
     setSelectedProject(project);
-    setCloningProject(null); // Zorg dat de wizard sluit als we een project openen
+    setCloningProject(null); 
   };
 
-  export const cloneProject = async (token, region, cloneData) => {
-  // Gebruik de correcte helper functie!
-  const baseUrl = getBaseUrlForRegion(region);
-  const url = `${baseUrl}/projects/clones`;
+  const handleCloneSubmit = async (cloneData) => {
+    Logger.info("Kloon data ontvangen uit wizard:", cloneData);
+    
+    setCloningProject(null); 
+    setIsLoading(true);
+    setLoadingText(`Kloon-opdracht naar Trimble sturen...`);
 
-  // Vertaal de wizard-vinkjes naar de Trimble 'include' array
-  const includeItems = [];
-  if (cloneData.options.copySettings) includeItems.push("settings");
-  if (cloneData.options.copyMembers) includeItems.push("users");
-  if (cloneData.options.copyGroups) includeItems.push("groups");
-  
-  // Als mappen mee moeten, moeten de rechten (folderPermissions) ook mee
-  if (cloneData.options.copyFolders) {
-    includeItems.push("folders");
-    includeItems.push("folderPermissions"); 
-  }
-
-  // Fallback naar alles
-  const finalInclude = includeItems.length > 0 ? includeItems : ["*"];
-
-  const payload = {
-    sourceProjectId: cloneData.sourceProjectId,
-    include: finalInclude,
-    targetProjectDetails: {
-      name: cloneData.newProjectName
+    try {
+      const token = await getValidToken();
+      const cloneResponse = await cloneProject(token, region, cloneData);
+      
+      Logger.info("Kloon-opdracht succesvol in de wachtrij geplaatst!", cloneResponse);
+      
+      alert(`Het project wordt nu op de achtergrond aangemaakt door Trimble.\nDit kan een paar minuten duren. Ververs straks de projectenlijst om het resultaat te zien.`);
+      
+    } catch (error) {
+      Logger.error("Fout bij klonen van project:", error.message, error.stack);
+      alert(`Er is een fout opgetreden bij het klonen: ${error.message}\nCheck de logs voor meer details.`);
+    } finally {
+      setIsLoading(false);
+      setLoadingText('');
     }
   };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Trimble Fout (${response.status}): ${errorText}`);
-  }
-
-  return await response.json();
-};
 
   useEffect(() => {
     if (embeddedProject) {
@@ -205,8 +184,6 @@ function App() {
     }
   };
 
-  const handleExportGroupsCSV = async () => { /* Je huidige CSV logica hier */ };
-
   useEffect(() => {
     if (activePage === 'projects') {
       loadProjects();
@@ -220,7 +197,6 @@ function App() {
 
   return (
     <div className="modus-layout">
-      {/* HEADER */}
       {!isEmbedded && (
         <nav className="navbar navbar-expand-lg modus-header bg-primary">
           <div className="container-fluid align-items-center">
@@ -235,10 +211,8 @@ function App() {
         </nav>
       )}
 
-      {/* BODY */}
       <div className={`modus-body sidebar-open ${!isSidebarOpen || isEmbedded ? 'mini-sidebar-active' : ''}`}>
         
-        {/* ZIJBALK */}
         {!isEmbedded && (
           <ModusSidebar 
             isOpen={isSidebarOpen} 
@@ -253,7 +227,6 @@ function App() {
 
         <div className="modus-content-rows" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
           
-          {/* HORIZONTALE NAVIGATIE (Embedded) */}
           {isEmbedded && (
             <div className="bg-light border-bottom px-3 pt-2">
               <ul className="nav nav-tabs border-bottom-0">
@@ -273,7 +246,6 @@ function App() {
             </div>
           )}
 
-          {/* PROJECT TOOLBAR: Verborgen als we een project bekijken OF klonen */}
           {activePage === 'projects' && !selectedProject && !cloningProject && (
             <ProjectToolbar 
               viewMode={viewMode} 
@@ -293,7 +265,6 @@ function App() {
               {activePage === 'projects' && (
                 <>
                   {cloningProject ? (
-                    // 3. TOON DE WIZARD ALS CLONINGPROJECT GEVULD IS
                     <ProjectCloneWizard 
                       sourceProject={cloningProject} 
                       onClose={() => setCloningProject(null)} 
