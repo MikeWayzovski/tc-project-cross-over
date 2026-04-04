@@ -92,7 +92,7 @@ function App() {
             setLoadingText('');
             
             const newProjectId = statusUpdate.result?.projectId;
-            showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!` 'success');
+            showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`, 'success');
             
             // Ververs de lijst
             await loadProjects();
@@ -123,7 +123,7 @@ function App() {
       Logger.error("Fout bij starten van kloon:", error.message, error.stack);
       setIsLoading(false);
       setLoadingText('');
-      showToast(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}` 'danger');
+      showToast(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}`, 'danger');
     }
   };
 
