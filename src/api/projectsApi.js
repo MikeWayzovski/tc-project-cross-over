@@ -117,31 +117,52 @@ export const getProjectSnapshot = async (token, region, projectId) => {
   return await response.json();
 };
 
-export const copyFile = async (token, region, fileVersionId, newParentId) => {
+export const downloadFileBlob = async (token, region, fileId, versionId) => {
   const baseUrl = getBaseUrlForRegion(region);
-  const url = `${baseUrl}/tc/api/2.0/files`;
 
-  const payload = {
-    parentId: newParentId,
-    parentType: "FOLDER",
-    fromFileVersionId: fileVersionId,
-    copyMetaData: false, // CRUCIAAL: Voorkomt crashes als originele gebruikers ontbreken!
-    mergeExisting: false
-  };
+  // Stap 1: Vraag de S3 download URL op bij Trimble
+  const urlResponse = await fetch(`${baseUrl}/tc/api/2.0/files/${fileId}/downloadurl?versionId=${versionId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
 
-  const response = await fetch(url, {
+  if (!urlResponse.ok) throw new Error(`Kon download-URL niet ophalen (${urlResponse.status})`);
+  const { url } = await urlResponse.json();
+
+  // Stap 2: Download het bestand in het geheugen van de browser
+  const blobResponse = await fetch(url);
+  if (!blobResponse.ok) throw new Error(`S3 Download mislukt (${blobResponse.status})`);
+
+  return await blobResponse.blob();
+};
+
+export const uploadFileBlob = async (token, region, parentFolderId, fileName, fileBlob) => {
+  const baseUrl = getBaseUrlForRegion(region);
+
+  // Stap 1: Kondig de upload aan bij Trimble
+  const initResponse = await fetch(`${baseUrl}/tc/api/2.0/files/fs/upload?parentId=${parentFolderId}&parentType=FOLDER`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ name: fileName, contents: [] }) // Lege contents = snelle singlepart upload
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Trimble weigerde de kopie (${response.status}): ${errorText}`);
+  if (!initResponse.ok) {
+    const errorText = await initResponse.text();
+    throw new Error(`Upload initiëren mislukt (${initResponse.status}): ${errorText}`);
   }
 
-  return await response.json();
+  const initData = await initResponse.json();
+  const uploadUrl = initData.contents[0].url;
+
+  // Stap 2: Pomp de blob direct naar de AWS S3 bucket van het nieuwe project
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: fileBlob
+  });
+
+  if (!putResponse.ok) throw new Error(`S3 Upload mislukt (${putResponse.status})`);
+
+  return initData;
 };

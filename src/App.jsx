@@ -20,7 +20,7 @@ import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
 import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
 
-import { getProjects, cloneProject, getCloneStatus, copyFile, getProjectSnapshot } from './api/projectsApi';
+import { getProjects, cloneProject, getCloneStatus, getProjectSnapshot, downloadFileBlob, uploadFileBlob } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 
@@ -124,20 +124,24 @@ function App() {
                 let successCount = 0;
                 let failCount = 0;
 
+                // 3. Kopieer elk bestand naar de juiste nieuwe map
                 for (let i = 0; i < cloneData.filesToCopy.length; i++) {
                   const file = cloneData.filesToCopy[i];
-                  setLoadingText(`Bestand kopiëren (${i + 1}/${cloneData.filesToCopy.length}): ${file.nm}`);
+                  setLoadingText(`Bestand overzetten (${i + 1}/${cloneData.filesToCopy.length}): ${file.nm}`);
                   
+                  // Zoek op welk pad dit bestand vroeger stond, en zoek de ID van dat pad in het nieuwe project
                   const folderPath = oldPaths.idToPath[file.pid];
                   const newFolderId = newPaths.pathToId[folderPath];
                   
                   if (newFolderId) {
                     try {
-                      await copyFile(token, region, file.vid, newFolderId);
+                      // HET MAGISCHE OVERPOMP MOMENT
+                      const fileBlob = await downloadFileBlob(token, region, file.id, file.vid);
+                      await uploadFileBlob(token, region, newFolderId, file.nm, fileBlob);
+                      
                       successCount++;
                     } catch (err) {
-                      // FIX: Forceer tekst-output voor de foutmelding in plaats van {}
-                      Logger.error(`Kopiëren mislukt voor ${file.nm}:`, err.message || err);
+                      Logger.error(`Overzetten mislukt voor ${file.nm}:`, err.message || err);
                       failCount++;
                     }
                   } else {
