@@ -125,7 +125,7 @@ export const copyFile = async (token, region, fileVersionId, newParentId) => {
     parentId: newParentId,
     parentType: "FOLDER",
     fromFileVersionId: fileVersionId,
-    copyMetaData: true, // Behoudt de originele metadata zoals 'gemaakt door'
+    copyMetaData: false, // CRUCIAAL: Voorkomt crashes als originele gebruikers ontbreken!
     mergeExisting: false
   };
 
@@ -140,7 +140,7 @@ export const copyFile = async (token, region, fileVersionId, newParentId) => {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Fout bij kopiëren bestand (${response.status}): ${errorText}`);
+    throw new Error(`Trimble weigerde de kopie (${response.status}): ${errorText}`);
   }
 
   return await response.json();

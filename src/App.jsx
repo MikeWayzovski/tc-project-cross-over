@@ -20,7 +20,6 @@ import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
 import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
 
-// LET OP: copyFile en getProjectSnapshot zijn hier toegevoegd!
 import { getProjects, cloneProject, getCloneStatus, copyFile, getProjectSnapshot } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
@@ -29,6 +28,7 @@ function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
   const { isEmbedded, workspaceApi, embeddedToken, embeddedProject } = useWorkspaceApi();
   
+  // -- STATE MANAGEMENT --
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState('grid'); 
@@ -53,6 +53,7 @@ function App() {
     setTimeout(() => setToast(null), 5000); 
   };
 
+  // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const openProject = (project) => {
@@ -89,11 +90,10 @@ function App() {
               setLoadingText('Mappenstructuur vergelijken voor bestandenoverdracht...');
               
               try {
-                // 1. Haal snapshots op van BEIDE projecten
                 const oldSnapshot = await getProjectSnapshot(token, region, cloneData.sourceProjectId);
                 const newSnapshot = await getProjectSnapshot(token, region, newProjectId);
                 
-                // 2. Helper functie om ID's naar tekst-paden te vertalen (bijv: "RootFolder/Map A/Bestand")
+                // Helper functie om ID's naar unieke tekst-paden te vertalen
                 const buildPaths = (items) => {
                   const map = {};
                   items.forEach(item => map[item.id] = item);
@@ -101,6 +101,9 @@ function App() {
                   const getPath = (id) => {
                     if (!id || !map[id]) return '';
                     const node = map[id];
+                    // FIX: Als de map geen parent heeft, is het de Root map.
+                    // Door deze altijd 'ROOT' te noemen, vangen we naamsverschillen tussen projecten op!
+                    if (!node.pid) return 'ROOT'; 
                     const parentPath = getPath(node.pid);
                     return parentPath ? `${parentPath}/${node.nm}` : node.nm;
                   };
@@ -121,12 +124,10 @@ function App() {
                 let successCount = 0;
                 let failCount = 0;
 
-                // 3. Kopieer elk bestand naar de juiste nieuwe map
                 for (let i = 0; i < cloneData.filesToCopy.length; i++) {
                   const file = cloneData.filesToCopy[i];
                   setLoadingText(`Bestand kopiëren (${i + 1}/${cloneData.filesToCopy.length}): ${file.nm}`);
                   
-                  // Zoek op welk pad dit bestand vroeger stond, en zoek de ID van dat pad in het nieuwe project
                   const folderPath = oldPaths.idToPath[file.pid];
                   const newFolderId = newPaths.pathToId[folderPath];
                   
@@ -135,7 +136,8 @@ function App() {
                       await copyFile(token, region, file.vid, newFolderId);
                       successCount++;
                     } catch (err) {
-                      Logger.error(`Kopiëren mislukt voor ${file.nm}:`, err);
+                      // FIX: Forceer tekst-output voor de foutmelding in plaats van {}
+                      Logger.error(`Kopiëren mislukt voor ${file.nm}:`, err.message || err);
                       failCount++;
                     }
                   } else {
@@ -149,19 +151,17 @@ function App() {
                 showToast(`Project aangemaakt! ${successCount} bestanden gekopieerd (${failCount} mislukt).`, successCount > 0 ? 'success' : 'warning');
                 
               } catch (error) {
-                Logger.error("Fout bij het overzetten van bestanden:", error);
+                Logger.error("Fout bij het overzetten van bestanden:", error.message || error);
                 setIsLoading(false);
                 setLoadingText('');
                 showToast(`Project is aangemaakt, maar er ging iets mis bij het kopiëren van de bestanden.`, 'warning');
               }
             } else {
-              // Er waren geen bestanden geselecteerd
               setIsLoading(false);
               setLoadingText('');
               showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`, 'success');
             }
 
-            // Ververs de lijst met projecten
             await loadProjects();
             
           } else if (statusUpdate.status === 'ERROR') {
@@ -436,7 +436,6 @@ function App() {
         </div>
       </div>
       
-      {/* ZWEVENDE TOAST NOTIFICATIE */}
       {toast && (
         <div 
           className={`alert alert-${toast.type} shadow-lg d-flex align-items-center`} 
