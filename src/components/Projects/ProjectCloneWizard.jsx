@@ -3,12 +3,35 @@ import ModusIcon from '../Modus/ModusIcon';
 import { getProjectSnapshot } from '../../api/projectsApi';
 import { Logger } from '../../utils/logger';
 
+
+// --- HULP COMPONENT: Bestand Icoontjes Bepalen ---
+const getFileIcon = (filename) => {
+  if (!filename.includes('.')) return { name: 'document', color: 'text-secondary' };
+  
+  const ext = filename.split('.').pop().toLowerCase();
+  switch (ext) {
+    case 'pdf': 
+      return { name: 'document', color: 'text-danger' }; // Rood document voor PDF
+    case 'xls': case 'xlsx': case 'csv': 
+      return { name: 'table', color: 'text-success' }; // Groene tabel voor Excel
+    case 'ifc': case 'skp': case 'rvt': case 'dwg': case 'dxf': case 'trb': 
+      return { name: 'box', color: 'text-info' }; // Blauwe 3D doos voor BIM modellen
+    case 'doc': case 'docx': 
+      return { name: 'document', color: 'text-primary' }; // Blauw document voor Word
+    case 'jpg': case 'jpeg': case 'png': case 'bmp': 
+      return { name: 'image', color: 'text-warning' }; // Geel icoon voor afbeeldingen
+    default: 
+      return { name: 'document', color: 'text-secondary' }; // Standaard grijs
+  }
+};
+
+
 // --- HULP COMPONENT: De Recursieve Tree Node ---
-// Dit component roept zichzelf aan als er submappen zijn!
 const TreeNode = ({ node }) => {
   // Standaard klappen we de hoofdmap uit, en de rest in
   const [isOpen, setIsOpen] = useState(node.nm === 'RootFolder' || !node.pid);
   const isFolder = node.tp === 'FOLDER';
+  const fileIcon = !isFolder ? getFileIcon(node.nm) : null;
 
   return (
     <div style={{ marginLeft: '20px', marginTop: '4px' }}>
@@ -18,12 +41,18 @@ const TreeNode = ({ node }) => {
         onClick={() => isFolder && setIsOpen(!isOpen)}
       >
         {/* Placeholder voor de checkbox (voor Fase 2.2) */}
-        <input type="checkbox" className="form-check-input me-2" disabled title="Binnenkort beschikbaar" />
+        <input 
+          type="checkbox" 
+          className="form-check-input me-2" 
+          disabled 
+          title="Binnenkort beschikbaar" 
+          onClick={(e) => e.stopPropagation()} // Voorkom map in/uitklappen bij klikken op checkbox
+        />
         
         {isFolder ? (
           <ModusIcon name={isOpen ? 'folder-open' : 'folder'} size="18px" type="duotone" extraClasses="me-2 text-primary" />
         ) : (
-          <ModusIcon name="document" size="18px" type="duotone" extraClasses="me-2 text-secondary" />
+          <ModusIcon name={fileIcon.name} size="18px" type="duotone" extraClasses={`me-2 ${fileIcon.color}`} />
         )}
         <span className={isFolder ? 'fw-bold' : ''} style={{ fontSize: '0.9rem' }}>{node.nm}</span>
       </div>
