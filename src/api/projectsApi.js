@@ -117,20 +117,28 @@ export const getProjectSnapshot = async (token, region, projectId) => {
   return await response.json();
 };
 
-export const downloadFileBlob = async (token, region, fileId, versionId) => {
+eexport const downloadFileBlob = async (token, region, fileId, versionId) => {
   const baseUrl = getBaseUrlForRegion(region);
 
-  // Stap 1: Vraag de S3 download URL op bij Trimble
-  const urlResponse = await fetch(`${baseUrl}/tc/api/2.0/files/${fileId}/downloadurl?versionId=${versionId}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+  // Stap 1: Vraag de S3 download URL op bij Trimble (Let op de toegevoegde /fs/!)
+  const urlResponse = await fetch(`${baseUrl}/tc/api/2.0/files/fs/${fileId}/downloadurl?versionId=${versionId}`, {
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
   });
 
-  if (!urlResponse.ok) throw new Error(`Kon download-URL niet ophalen (${urlResponse.status})`);
-  const { url } = await urlResponse.json();
+  if (!urlResponse.ok) {
+    const errorText = await urlResponse.text();
+    throw new Error(`Kon download-URL niet ophalen (${urlResponse.status}): ${errorText}`);
+  }
+  
+  const data = await urlResponse.json();
+  const downloadUrl = data.url;
 
-  // Stap 2: Download het bestand in het geheugen van de browser
-  const blobResponse = await fetch(url);
-  if (!blobResponse.ok) throw new Error(`S3 Download mislukt (${blobResponse.status})`);
+  // Stap 2: Download het bestand in het geheugen van de browser via de AWS S3 link
+  const blobResponse = await fetch(downloadUrl);
+  if (!blobResponse.ok) throw new Error(`Bestand downloaden van S3 mislukt (${blobResponse.status})`);
 
   return await blobResponse.blob();
 };
@@ -138,14 +146,15 @@ export const downloadFileBlob = async (token, region, fileId, versionId) => {
 export const uploadFileBlob = async (token, region, parentFolderId, fileName, fileBlob) => {
   const baseUrl = getBaseUrlForRegion(region);
 
-  // Stap 1: Kondig de upload aan bij Trimble
+  // Stap 1: Kondig de upload aan bij Trimble via de Package Upload API
   const initResponse = await fetch(`${baseUrl}/tc/api/2.0/files/fs/upload?parentId=${parentFolderId}&parentType=FOLDER`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ name: fileName, contents: [] }) // Lege contents = snelle singlepart upload
+    // Lege contents of alleen de naam vertelt Trimble dat we 1 simpel bestand sturen
+    body: JSON.stringify({ name: fileName }) 
   });
 
   if (!initResponse.ok) {
@@ -154,15 +163,29 @@ export const uploadFileBlob = async (token, region, parentFolderId, fileName, fi
   }
 
   const initData = await initResponse.json();
-  const uploadUrl = initData.contents[0].url;
+  
+  // Haal de gegenereerde S3 upload URL uit de response
+  let uploadUrl = null;
+  if (initData.contents && initData.contents.length > 0) {
+    uploadUrl = initData.contents[0].url;
+  } else if (initData.uploadUrl) {
+    uploadUrl = initData.uploadUrl; // Fallback voor oudere Trimble API versies
+  }
+
+  if (!uploadUrl) {
+    throw new Error("Geen geldige S3 upload URL ontvangen van Trimble.");
+  }
 
   // Stap 2: Pomp de blob direct naar de AWS S3 bucket van het nieuwe project
+  // Let op: Bij Trimble S3 pre-signed URLs sturen we GEEN Authorization headers mee!
   const putResponse = await fetch(uploadUrl, {
     method: 'PUT',
     body: fileBlob
   });
 
-  if (!putResponse.ok) throw new Error(`S3 Upload mislukt (${putResponse.status})`);
+  if (!putResponse.ok) {
+    throw new Error(`Bestand uploaden naar S3 mislukt (${putResponse.status})`);
+  }
 
   return initData;
 };
