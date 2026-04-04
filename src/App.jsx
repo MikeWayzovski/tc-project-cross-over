@@ -60,7 +60,20 @@ function App() {
   const handleCloneSubmit = (cloneData) => {
     Logger.info("Kloon data ontvangen uit wizard:", cloneData);
     alert(`Opdracht voor klonen van '${cloneData.newProjectName}' ontvangen! (Fase 1 API integratie volgt)`);
-    setCloningProject(null);
+    try {
+      const token = await getValidToken();
+      const cloneResponse = await cloneProject(token, region, cloneData);
+      
+      Logger.info("Kloon-opdracht succesvol in de wachtrij geplaatst!", cloneResponse);
+      
+      // Toon een duidelijke melding aan de gebruiker
+      alert(`Het project wordt nu op de achtergrond aangemaakt door Trimble.\nDit kan een paar minuten duren. Ververs straks de projectenlijst om het resultaat te zien.`);
+      
+    } catch (error) {
+      Logger.error("Fout bij klonen van project:", error);
+      alert("Er is een fout opgetreden bij het klonen van het project.");
+    }
+    setCloningProject(null); // Sluit de wizard na het indienen
   };
 
   useEffect(() => {
