@@ -65,43 +65,57 @@ function App() {
 
     try {
       const token = await getValidToken();
+      // 1. Start de kloon
       const cloneResponse = await cloneProject(token, region, cloneData);
       const cloneId = cloneResponse.cloneId;
       
       Logger.info("Kloon-opdracht in de wachtrij:", cloneId);
 
-      // Start Polling mechanisme
+      // 2. Start het pollen (elke 5 seconden)
       const pollInterval = setInterval(async () => {
         try {
           const statusUpdate = await getCloneStatus(token, region, cloneId);
-          Logger.info(`Kloon status voor ${cloneId}: ${statusUpdate.status}`);
+          Logger.info(`Pollen... status voor ${cloneId} is nu: ${statusUpdate.status}`);
 
-          if (statusUpdate.status === 'COMPLETED') {
-            clearInterval(pollInterval);
+          // Controleer op de juiste statussen uit de Trimble documentatie
+          if (statusUpdate.status === 'DONE') {
+            clearInterval(pollInterval); // Stop met pollen
             setIsLoading(false);
             setLoadingText('');
+            
+            const newProjectId = statusUpdate.result?.projectId;
             alert(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`);
-            loadProjects(); // Ververs de lijst nu we weten dat hij er is
-          } else if (statusUpdate.status === 'FAILED') {
-            clearInterval(pollInterval);
+            
+            // Ververs de lijst
+            await loadProjects();
+            
+          } else if (statusUpdate.status === 'ERROR') {
+            clearInterval(pollInterval); // Stop met pollen
             setIsLoading(false);
             setLoadingText('');
-            alert(`Het klonen is mislukt aan de kant van Trimble.`);
+            
+            const errorMsg = statusUpdate.error?.message || "Onbekende fout";
+            Logger.error(`Klonen mislukt bij Trimble. Reden: ${errorMsg}`);
+            alert(`Het klonen is mislukt aan de kant van Trimble.\nReden: ${errorMsg}`);
+            
           } else {
-            // Nog bezig (QUEUED of IN_PROGRESS)
-            setLoadingText(`Trimble is bezig met kopiëren... Status: ${statusUpdate.status}`);
+            // Hij is dus QUEUED of PROCESSING
+            let uiStatus = statusUpdate.status === 'QUEUED' ? 'In de wachtrij...' : 'Trimble is aan het kopiëren...';
+            setLoadingText(`Bezig met klonen (${uiStatus})`);
           }
         } catch (pollError) {
-          Logger.error("Fout tijdens pollen:", pollError);
-          clearInterval(pollInterval);
+          // Haal de echte boodschap uit de error
+          Logger.error("Fout tijdens pollen van API:", pollError.message, pollError.stack);
+          // We stoppen het pollen NIET direct bij één netwerkfoutje, 
+          // we wachten gewoon de volgende 5 seconden af (misschien hikte het netwerk even).
         }
-      }, 5000); // Check elke 5 seconden
+      }, 5000);
 
     } catch (error) {
-      Logger.error("Fout bij starten van kloon:", error.message);
+      Logger.error("Fout bij starten van kloon:", error.message, error.stack);
       setIsLoading(false);
       setLoadingText('');
-      alert(`Er is een fout opgetreden: ${error.message}`);
+      alert(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}`);
     }
   };
 
