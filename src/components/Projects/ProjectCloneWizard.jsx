@@ -3,7 +3,6 @@ import ModusIcon from '../Modus/ModusIcon';
 import { getProjectSnapshot } from '../../api/projectsApi';
 import { Logger } from '../../utils/logger';
 
-
 // --- HULP COMPONENT: Bestand Icoontjes Bepalen ---
 const getFileIcon = (filename) => {
   if (!filename.includes('.')) return { name: 'document', color: 'text-secondary' };
@@ -11,42 +10,47 @@ const getFileIcon = (filename) => {
   const ext = filename.split('.').pop().toLowerCase();
   switch (ext) {
     case 'pdf': 
-      return { name: 'document', color: 'text-danger' }; // Rood document voor PDF
+      return { name: 'document', color: 'text-danger' };
     case 'xls': case 'xlsx': case 'csv': 
-      return { name: 'table', color: 'text-success' }; // Groene tabel voor Excel
+      return { name: 'table', color: 'text-success' };
     case 'ifc': case 'skp': case 'rvt': case 'dwg': case 'dxf': case 'trb': 
-      return { name: 'cube', color: 'text-info' }; // Blauwe 3D doos voor BIM modellen
+      return { name: 'box', color: 'text-info' };
     case 'doc': case 'docx': 
-      return { name: 'document', color: 'text-primary' }; // Blauw document voor Word
+      return { name: 'document', color: 'text-primary' };
     case 'jpg': case 'jpeg': case 'png': case 'bmp': 
-      return { name: 'image', color: 'text-warning' }; // Geel icoon voor afbeeldingen
+      return { name: 'image', color: 'text-warning' };
     default: 
-      return { name: 'document', color: 'text-secondary' }; // Standaard grijs
+      return { name: 'document', color: 'text-secondary' };
   }
 };
 
-
-// --- HULP COMPONENT: De Recursieve Tree Node ---
-const TreeNode = ({ node }) => {
-  // Standaard klappen we de hoofdmap uit, en de rest in
+// --- HULP COMPONENT: De Recursieve Tree Node met Checkbox ---
+const TreeNode = ({ node, selectedIds, onToggle }) => {
   const [isOpen, setIsOpen] = useState(node.nm === 'RootFolder' || !node.pid);
   const isFolder = node.tp === 'FOLDER';
   const fileIcon = !isFolder ? getFileIcon(node.nm) : null;
+  
+  // Controleer of deze specifieke node in onze 'geselecteerd' lijst staat
+  const isChecked = selectedIds.has(node.id);
 
   return (
     <div style={{ marginLeft: '20px', marginTop: '4px' }}>
       <div 
-        className="d-flex align-items-center py-1" 
-        style={{ cursor: isFolder ? 'pointer' : 'default' }} 
+        className="d-flex align-items-center py-1 rounded" 
+        style={{ cursor: isFolder ? 'pointer' : 'default', transition: 'background-color 0.2s' }} 
         onClick={() => isFolder && setIsOpen(!isOpen)}
+        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
       >
-        {/* Placeholder voor de checkbox (voor Fase 2.2) */}
         <input 
           type="checkbox" 
           className="form-check-input me-2" 
-          disabled 
-          title="Binnenkort beschikbaar" 
-          onClick={(e) => e.stopPropagation()} // Voorkom map in/uitklappen bij klikken op checkbox
+          checked={isChecked}
+          onChange={(e) => {
+            e.stopPropagation();
+            onToggle(node.id, e.target.checked);
+          }}
+          onClick={(e) => e.stopPropagation()} // Voorkom in/uitklappen bij vinken
         />
         
         {isFolder ? (
@@ -57,14 +61,12 @@ const TreeNode = ({ node }) => {
         <span className={isFolder ? 'fw-bold' : ''} style={{ fontSize: '0.9rem' }}>{node.nm}</span>
       </div>
       
-      {/* Als het een map is, en hij is opengeklapt, teken dan de 'kinderen' */}
       {isFolder && isOpen && node.children && node.children.map(child => (
-        <TreeNode key={child.id} node={child} />
+        <TreeNode key={child.id} node={child} selectedIds={selectedIds} onToggle={onToggle} />
       ))}
     </div>
   );
 };
-
 
 // --- HOOFD COMPONENT ---
 const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onClone }) => {
@@ -75,11 +77,11 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
   const [copyGroups, setCopyGroups] = useState(true);
   const [copyFolders, setCopyFolders] = useState(true);
 
-  // NIEUW: States voor de treeview
   const [snapshotTree, setSnapshotTree] = useState([]);
+  const [nodeMap, setNodeMap] = useState({}); // Snelle lookup-tabel voor het aanvinken
+  const [selectedIds, setSelectedIds] = useState(new Set()); // De actieve vinkjes
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
 
-  // Zodra de wizard opent: Haal de snapshot op!
   useEffect(() => {
     const fetchSnapshot = async () => {
       setIsLoadingSnapshot(true);
@@ -88,18 +90,15 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
         const data = await getProjectSnapshot(token, region, sourceProject.id);
         
         if (data && data.items) {
-          Logger.info(`Snapshot opgehaald: ${data.items.length} items gevonden.`);
-          
-          // Bouw de boomstructuur op
           const map = {};
           const roots = [];
 
-          // Stap 1: Maak een snelle zoek-map
+          // Stap 1: Vul de lookup map
           data.items.forEach(item => {
             map[item.id] = { ...item, children: [] };
           });
 
-          // Stap 2: Koppel kinderen aan hun ouders
+          // Stap 2: Bouw de boom
           data.items.forEach(item => {
             if (item.pid && map[item.pid]) {
               map[item.pid].children.push(map[item.id]);
@@ -108,7 +107,7 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
             }
           });
 
-          // Stap 3: Sorteer de inhoud (Mappen bovenaan, dan A-Z)
+          // Stap 3: Sorteren (Mappen eerst, dan A-Z)
           const sortTree = (nodes) => {
             nodes.sort((a, b) => {
               if (a.tp === 'FOLDER' && b.tp !== 'FOLDER') return -1;
@@ -119,6 +118,7 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
           };
           sortTree(roots);
 
+          setNodeMap(map); // Bewaar in state voor de checkboxes
           setSnapshotTree(roots);
         }
       } catch (error) {
@@ -131,16 +131,38 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
     if (sourceProject) fetchSnapshot();
   }, [sourceProject, region, getValidToken]);
 
+  // Recursieve functie voor de checkboxes (Vinkt alle kinderen mee aan/uit)
+  const handleToggle = (nodeId, isChecked) => {
+    const newSelected = new Set(selectedIds);
+    
+    const toggleRecursive = (id, check) => {
+      if (check) newSelected.add(id);
+      else newSelected.delete(id);
+      
+      const node = nodeMap[id];
+      if (node && node.children) {
+        node.children.forEach(child => toggleRecursive(child.id, check));
+      }
+    };
+
+    toggleRecursive(nodeId, isChecked);
+    setSelectedIds(newSelected);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
+    // Filter alleen de bestanden uit de selectie (mappen regelt de copyFolders optie al!)
+    const filesToCopy = Array.from(selectedIds)
+      .map(id => nodeMap[id])
+      .filter(node => node && node.tp === 'FILE');
+
     const cloneData = {
       sourceProjectId: sourceProject.id,
       newProjectName,
       options: { copySettings, copyMembers, copyGroups, copyFolders },
-      filesToCopy: [] // Straks vullen we dit met de aangevinkte bestanden!
+      filesToCopy // Hier zit nu je lijst met bestand-objecten in!
     };
 
     onClone(cloneData);
@@ -159,7 +181,6 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
       </div>
 
       <div className="row g-5">
-        {/* LINKERKOLOM: Instellingen */}
         <div className="col-lg-6">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-header bg-light fw-bold">
@@ -173,22 +194,18 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
               </div>
 
               <p className="fw-bold mb-3">Selecteer om te kopiëren:</p>
-
               <div className="form-check mb-3">
                 <input className="form-check-input" type="checkbox" id="chkSettings" checked={copySettings} onChange={(e) => setCopySettings(e.target.checked)} />
                 <label className="form-check-label" htmlFor="chkSettings"><strong>Project instellingen</strong></label>
               </div>
-
               <div className="form-check mb-3">
                 <input className="form-check-input" type="checkbox" id="chkMembers" checked={copyMembers} onChange={(e) => setCopyMembers(e.target.checked)} />
                 <label className="form-check-label" htmlFor="chkMembers"><strong>Project leden</strong></label>
               </div>
-
               <div className="form-check mb-3">
                 <input className="form-check-input" type="checkbox" id="chkGroups" checked={copyGroups} onChange={(e) => setCopyGroups(e.target.checked)} />
                 <label className="form-check-label" htmlFor="chkGroups"><strong>Groepen</strong></label>
               </div>
-
               <div className="form-check mb-4">
                 <input className="form-check-input" type="checkbox" id="chkFolders" checked={copyFolders} onChange={(e) => setCopyFolders(e.target.checked)} />
                 <label className="form-check-label" htmlFor="chkFolders"><strong>Mappenstructuren</strong></label>
@@ -197,15 +214,18 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
           </div>
         </div>
 
-        {/* RECHTERKOLOM: Bestandenboom (Fase 2.1) */}
         <div className="col-lg-6">
           <div className="card shadow-sm border-primary h-100">
-            <div className="card-header bg-primary text-white fw-bold">
-              <ModusIcon name="folder-open" size="18px" extraClasses="me-2 text-white" />
-              Geavanceerd: Project Inhoud (Sjabloonbestanden)
+            <div className="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+              <div>
+                <ModusIcon name="folder-open" size="18px" extraClasses="me-2 text-white" />
+                Geavanceerd: Project Inhoud
+              </div>
+              <span className="badge bg-light text-primary">
+                {Array.from(selectedIds).map(id => nodeMap[id]).filter(n => n?.tp === 'FILE').length} bestanden
+              </span>
             </div>
             <div className="card-body d-flex flex-column p-0">
-              
               {isLoadingSnapshot ? (
                 <div className="d-flex flex-column align-items-center justify-content-center h-100 p-5 text-muted">
                   <div className="spinner-border mb-3" role="status"></div>
@@ -214,19 +234,24 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
               ) : (
                 <div className="flex-grow-1" style={{ overflowY: 'auto', maxHeight: '450px', padding: '15px' }}>
                   {snapshotTree.length > 0 ? (
-                    snapshotTree.map(rootNode => <TreeNode key={rootNode.id} node={rootNode} />)
+                    snapshotTree.map(rootNode => (
+                      <TreeNode 
+                        key={rootNode.id} 
+                        node={rootNode} 
+                        selectedIds={selectedIds} 
+                        onToggle={handleToggle} 
+                      />
+                    ))
                   ) : (
                     <div className="text-center text-muted p-4">Geen bestanden of mappen gevonden in dit project.</div>
                   )}
                 </div>
               )}
-
             </div>
           </div>
         </div>
       </div>
 
-      {/* FOOTER ACTIES */}
       <div className="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
         <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Annuleren</button>
         <button type="button" className="btn btn-primary d-flex align-items-center" onClick={handleSubmit} disabled={!newProjectName.trim()}>
