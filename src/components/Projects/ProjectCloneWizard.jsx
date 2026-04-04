@@ -15,7 +15,7 @@ const getFileIcon = (filename) => {
     case 'xls': case 'xlsx': case 'csv': 
       return { name: 'table', color: 'text-success' }; // Groene tabel voor Excel
     case 'ifc': case 'skp': case 'rvt': case 'dwg': case 'dxf': case 'trb': 
-      return { name: 'box', color: 'text-info' }; // Blauwe 3D doos voor BIM modellen
+      return { name: 'cube', color: 'text-info' }; // Blauwe 3D doos voor BIM modellen
     case 'doc': case 'docx': 
       return { name: 'document', color: 'text-primary' }; // Blauw document voor Word
     case 'jpg': case 'jpeg': case 'png': case 'bmp': 
