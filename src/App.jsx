@@ -56,35 +56,50 @@ function App() {
     setCloningProject(null); // Zorg dat de wizard sluit als we een project openen
   };
 
-  // Functie die aangeroepen wordt als de wizard op "Aanmaken" klikt (Nu nog een placeholder)
-  const handleCloneSubmit = async (cloneData) => {
-    Logger.info("Kloon data ontvangen uit wizard:", cloneData);
-    
-    // Sluit de wizard en toon eventueel de laad-spinner (als je die state gebruikt)
-    setCloningProject(null); 
-    setIsLoading(true);
-    setLoadingText(`Kloon-opdracht naar Trimble sturen...`);
+  export const cloneProject = async (token, region, cloneData) => {
+  // Gebruik de correcte helper functie!
+  const baseUrl = getBaseUrlForRegion(region);
+  const url = `${baseUrl}/projects/clones`;
 
-    try {
-      const token = await getValidToken();
-      const cloneResponse = await cloneProject(token, region, cloneData);
-      
-      Logger.info("Kloon-opdracht succesvol in de wachtrij geplaatst!", cloneResponse);
-      
-      // Toon een duidelijke melding aan de gebruiker
-      alert(`Het project wordt nu op de achtergrond aangemaakt door Trimble.\nDit kan een paar minuten duren. Ververs straks de projectenlijst om het resultaat te zien.`);
-      
-    } catch (error) {
-      // Vraag expliciet om de message en de stacktrace!
-      Logger.error("Fout bij klonen van project:", error.message, error.stack);
-      alert(`Er is een fout opgetreden: ${error.message}`);
-    }
-    } finally {
-      // Zet de laad-animatie weer uit, of het nu gelukt is of niet
-      setIsLoading(false);
-      setLoadingText('');
+  // Vertaal de wizard-vinkjes naar de Trimble 'include' array
+  const includeItems = [];
+  if (cloneData.options.copySettings) includeItems.push("settings");
+  if (cloneData.options.copyMembers) includeItems.push("users");
+  if (cloneData.options.copyGroups) includeItems.push("groups");
+  
+  // Als mappen mee moeten, moeten de rechten (folderPermissions) ook mee
+  if (cloneData.options.copyFolders) {
+    includeItems.push("folders");
+    includeItems.push("folderPermissions"); 
+  }
+
+  // Fallback naar alles
+  const finalInclude = includeItems.length > 0 ? includeItems : ["*"];
+
+  const payload = {
+    sourceProjectId: cloneData.sourceProjectId,
+    include: finalInclude,
+    targetProjectDetails: {
+      name: cloneData.newProjectName
     }
   };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Trimble Fout (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+};
 
   useEffect(() => {
     if (embeddedProject) {
