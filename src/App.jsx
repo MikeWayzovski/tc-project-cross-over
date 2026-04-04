@@ -22,6 +22,7 @@ import ProjectCloneWizard from './components/Projects/ProjectCloneWizard';
 
 // HIER WAS DE FOUT: cloneProject is nu netjes geïmporteerd!
 import { getProjects, cloneProject } from './api/projectsApi';
+import { getProjects, cloneProject, getCloneStatus } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 
