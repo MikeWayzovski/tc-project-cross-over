@@ -20,7 +20,8 @@ import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
 import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
 
-import { getProjects, cloneProject, getCloneStatus } from './api/projectsApi';
+// LET OP: copyFile en getProjectSnapshot zijn hier toegevoegd!
+import { getProjects, cloneProject, getCloneStatus, copyFile, getProjectSnapshot } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 
@@ -28,7 +29,6 @@ function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
   const { isEmbedded, workspaceApi, embeddedToken, embeddedProject } = useWorkspaceApi();
   
-  // -- STATE MANAGEMENT --
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState('grid'); 
@@ -46,17 +46,13 @@ function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   
   const [cloningProject, setCloningProject] = useState(null);
-  
-  // Nieuwe state voor de zwevende notificaties
   const [toast, setToast] = useState(null);
 
-  // Helper functie om een notificatie te tonen die vanzelf verdwijnt
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000); 
   };
 
-  // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const openProject = (project) => {
@@ -73,49 +69,116 @@ function App() {
 
     try {
       const token = await getValidToken();
-      // 1. Start de kloon
       const cloneResponse = await cloneProject(token, region, cloneData);
       const cloneId = cloneResponse.cloneId;
       
       Logger.info("Kloon-opdracht in de wachtrij:", cloneId);
 
-      // 2. Start het pollen (elke 5 seconden)
       const pollInterval = setInterval(async () => {
         try {
           const statusUpdate = await getCloneStatus(token, region, cloneId);
           Logger.info(`Pollen... status voor ${cloneId} is nu: ${statusUpdate.status}`);
 
-          // Controleer op de juiste statussen uit de Trimble documentatie
           if (statusUpdate.status === 'DONE') {
-            clearInterval(pollInterval); // Stop met pollen
-            setIsLoading(false);
-            setLoadingText('');
+            clearInterval(pollInterval); 
             
             const newProjectId = statusUpdate.result?.projectId;
-            showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`, 'success');
             
-            // Ververs de lijst
+            // --- FASE 2.3: BESTANDEN KOPIËREN ---
+            if (cloneData.filesToCopy && cloneData.filesToCopy.length > 0) {
+              setLoadingText('Mappenstructuur vergelijken voor bestandenoverdracht...');
+              
+              try {
+                // 1. Haal snapshots op van BEIDE projecten
+                const oldSnapshot = await getProjectSnapshot(token, region, cloneData.sourceProjectId);
+                const newSnapshot = await getProjectSnapshot(token, region, newProjectId);
+                
+                // 2. Helper functie om ID's naar tekst-paden te vertalen (bijv: "RootFolder/Map A/Bestand")
+                const buildPaths = (items) => {
+                  const map = {};
+                  items.forEach(item => map[item.id] = item);
+                  
+                  const getPath = (id) => {
+                    if (!id || !map[id]) return '';
+                    const node = map[id];
+                    const parentPath = getPath(node.pid);
+                    return parentPath ? `${parentPath}/${node.nm}` : node.nm;
+                  };
+                  
+                  const idToPath = {};
+                  const pathToId = {};
+                  items.filter(i => i.tp === 'FOLDER').forEach(f => {
+                    const path = getPath(f.id);
+                    idToPath[f.id] = path;
+                    pathToId[path] = f.id;
+                  });
+                  return { idToPath, pathToId };
+                };
+                
+                const oldPaths = buildPaths(oldSnapshot.items || []);
+                const newPaths = buildPaths(newSnapshot.items || []);
+                
+                let successCount = 0;
+                let failCount = 0;
+
+                // 3. Kopieer elk bestand naar de juiste nieuwe map
+                for (let i = 0; i < cloneData.filesToCopy.length; i++) {
+                  const file = cloneData.filesToCopy[i];
+                  setLoadingText(`Bestand kopiëren (${i + 1}/${cloneData.filesToCopy.length}): ${file.nm}`);
+                  
+                  // Zoek op welk pad dit bestand vroeger stond, en zoek de ID van dat pad in het nieuwe project
+                  const folderPath = oldPaths.idToPath[file.pid];
+                  const newFolderId = newPaths.pathToId[folderPath];
+                  
+                  if (newFolderId) {
+                    try {
+                      await copyFile(token, region, file.vid, newFolderId);
+                      successCount++;
+                    } catch (err) {
+                      Logger.error(`Kopiëren mislukt voor ${file.nm}:`, err);
+                      failCount++;
+                    }
+                  } else {
+                    Logger.warn(`Doelmap niet gevonden in nieuwe project voor: ${file.nm} (pad: ${folderPath})`);
+                    failCount++;
+                  }
+                }
+                
+                setIsLoading(false);
+                setLoadingText('');
+                showToast(`Project aangemaakt! ${successCount} bestanden gekopieerd (${failCount} mislukt).`, successCount > 0 ? 'success' : 'warning');
+                
+              } catch (error) {
+                Logger.error("Fout bij het overzetten van bestanden:", error);
+                setIsLoading(false);
+                setLoadingText('');
+                showToast(`Project is aangemaakt, maar er ging iets mis bij het kopiëren van de bestanden.`, 'warning');
+              }
+            } else {
+              // Er waren geen bestanden geselecteerd
+              setIsLoading(false);
+              setLoadingText('');
+              showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`, 'success');
+            }
+
+            // Ververs de lijst met projecten
             await loadProjects();
             
           } else if (statusUpdate.status === 'ERROR') {
-            clearInterval(pollInterval); // Stop met pollen
+            clearInterval(pollInterval);
             setIsLoading(false);
             setLoadingText('');
             
             const errorMsg = statusUpdate.error?.message || "Onbekende fout";
             Logger.error(`Klonen mislukt bij Trimble. Reden: ${errorMsg}`);
-            alert(`Het klonen is mislukt aan de kant van Trimble.\nReden: ${errorMsg}`);
+            showToast(`Klonen mislukt: ${errorMsg}`, 'danger');
             
           } else {
-            // Hij is dus QUEUED of PROCESSING
             let uiStatus = statusUpdate.status === 'QUEUED' ? 'In de wachtrij...' : 'Trimble is aan het kopiëren...';
             setLoadingText(`Bezig met klonen (${uiStatus})`);
           }
         } catch (pollError) {
-          // Haal de echte boodschap uit de error
           Logger.error("Fout tijdens pollen van API:", pollError.message, pollError.stack);
-          // We stoppen het pollen NIET direct bij één netwerkfoutje, 
-          // we wachten gewoon de volgende 5 seconden af (misschien hikte het netwerk even).
         }
       }, 5000);
 
@@ -372,6 +435,31 @@ function App() {
           <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={progress} />
         </div>
       </div>
+      
+      {/* ZWEVENDE TOAST NOTIFICATIE */}
+      {toast && (
+        <div 
+          className={`alert alert-${toast.type} shadow-lg d-flex align-items-center`} 
+          style={{ 
+            position: 'absolute', 
+            top: '20px', 
+            right: '20px', 
+            zIndex: 9999, 
+            minWidth: '350px',
+            borderLeft: `5px solid ${toast.type === 'success' ? '#00853B' : toast.type === 'warning' ? '#E56A00' : '#D22D2D'}`
+          }}
+        >
+          <ModusIcon 
+            name={toast.type === 'success' ? 'check-circle' : 'warning'} 
+            size="24px" 
+            extraClasses={`me-3 text-${toast.type}`} 
+          />
+          <div className="fw-semibold">
+            {toast.message}
+          </div>
+          <button type="button" className="btn-close ms-auto" onClick={() => setToast(null)}></button>
+        </div>
+      )}
     </div>
   );
 }

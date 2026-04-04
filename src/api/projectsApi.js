@@ -116,3 +116,32 @@ export const getProjectSnapshot = async (token, region, projectId) => {
 
   return await response.json();
 };
+
+export const copyFile = async (token, region, fileVersionId, newParentId) => {
+  const baseUrl = getBaseUrlForRegion(region);
+  const url = `${baseUrl}/tc/api/2.0/files`;
+
+  const payload = {
+    parentId: newParentId,
+    parentType: "FOLDER",
+    fromFileVersionId: fileVersionId,
+    copyMetaData: true, // Behoudt de originele metadata zoals 'gemaakt door'
+    mergeExisting: false
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Fout bij kopiëren bestand (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+};
