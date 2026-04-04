@@ -36,7 +36,7 @@ export const getProjectDetails = async (token, regionName, projectId) => {
 export const cloneProject = async (token, region, cloneData) => {
   // LET OP: Gebruik hier jouw bestaande functie/variabele voor de base URL!
   // Bijvoorbeeld: const baseUrl = REGION_URLS[region]; of getBaseUrl(region);
-  const baseUrl = getApiBaseUrl(region); // <-- Pas deze regel aan naar jouw bestaande logica!
+  const baseUrl = getBaseUrlForRegion(regionName);
   
   const url = `${baseUrl}/projects/clones`;
 
