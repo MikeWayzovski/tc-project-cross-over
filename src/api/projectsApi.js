@@ -32,3 +32,50 @@ export const getProjectDetails = async (token, regionName, projectId) => {
     return null;
   }
 };
+
+export const cloneProject = async (token, region, cloneData) => {
+  // LET OP: Gebruik hier jouw bestaande functie/variabele voor de base URL!
+  // Bijvoorbeeld: const baseUrl = REGION_URLS[region]; of getBaseUrl(region);
+  const baseUrl = getApiBaseUrl(region); // <-- Pas deze regel aan naar jouw bestaande logica!
+  
+  const url = `${baseUrl}/projects/clones`;
+
+  // 1. Vertaal de wizard-vinkjes naar de Trimble 'include' array
+  const includeItems = [];
+  if (cloneData.options.copySettings) includeItems.push("settings");
+  if (cloneData.options.copyMembers) includeItems.push("users");
+  if (cloneData.options.copyGroups) includeItems.push("groups");
+  if (cloneData.options.copyFolders) {
+    includeItems.push("folders");
+    includeItems.push("folderPermissions"); // Cruciaal: Neemt direct de rechten over!
+  }
+
+  // Als er per ongeluk helemaal niets is aangevinkt, vallen we terug op de wildcard '*'
+  const finalInclude = includeItems.length > 0 ? includeItems : ["*"];
+
+  // 2. Bouw de officiële payload op
+  const payload = {
+    sourceProjectId: cloneData.sourceProjectId,
+    include: finalInclude,
+    targetProjectDetails: {
+      name: cloneData.newProjectName
+    }
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`API Fout bij klonen (${response.status}): ${errorData.message || response.statusText}`);
+  }
+
+  // Trimble geeft een 202 (QUEUED) terug. Dit object bevat o.a. { cloneId, status }
+  return await response.json();
+};
