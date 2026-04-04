@@ -117,7 +117,7 @@ export const getProjectSnapshot = async (token, region, projectId) => {
   return await response.json();
 };
 
-eexport const downloadFileBlob = async (token, region, fileId, versionId) => {
+export const downloadFileBlob = async (token, region, fileId, versionId) => {
   const baseUrl = getBaseUrlForRegion(region);
 
   // Stap 1: Vraag de S3 download URL op bij Trimble (Let op de toegevoegde /fs/!)
