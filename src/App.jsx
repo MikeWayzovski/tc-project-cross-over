@@ -46,6 +46,15 @@ function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   
   const [cloningProject, setCloningProject] = useState(null);
+  
+  // Nieuwe state voor de zwevende notificaties
+  const [toast, setToast] = useState(null);
+
+  // Helper functie om een notificatie te tonen die vanzelf verdwijnt
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000); 
+  };
 
   // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -83,7 +92,7 @@ function App() {
             setLoadingText('');
             
             const newProjectId = statusUpdate.result?.projectId;
-            alert(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`);
+            showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!` 'success');
             
             // Ververs de lijst
             await loadProjects();
@@ -114,7 +123,7 @@ function App() {
       Logger.error("Fout bij starten van kloon:", error.message, error.stack);
       setIsLoading(false);
       setLoadingText('');
-      alert(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}`);
+      showToast(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}` 'danger');
     }
   };
 
