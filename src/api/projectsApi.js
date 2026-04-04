@@ -34,26 +34,25 @@ export const getProjectDetails = async (token, regionName, projectId) => {
 };
 
 export const cloneProject = async (token, region, cloneData) => {
-  // LET OP: Gebruik hier jouw bestaande functie/variabele voor de base URL!
-  // Bijvoorbeeld: const baseUrl = REGION_URLS[region]; of getBaseUrl(region);
-  const baseUrl = getBaseUrlForRegion(regionName);
-  
+  // Gebruik de correcte helper functie!
+  const baseUrl = getBaseUrlForRegion(region);
   const url = `${baseUrl}/projects/clones`;
 
-  // 1. Vertaal de wizard-vinkjes naar de Trimble 'include' array
+  // Vertaal de wizard-vinkjes naar de Trimble 'include' array
   const includeItems = [];
   if (cloneData.options.copySettings) includeItems.push("settings");
   if (cloneData.options.copyMembers) includeItems.push("users");
   if (cloneData.options.copyGroups) includeItems.push("groups");
+  
+  // Als mappen mee moeten, moeten de rechten (folderPermissions) ook mee
   if (cloneData.options.copyFolders) {
     includeItems.push("folders");
-    includeItems.push("folderPermissions"); // Cruciaal: Neemt direct de rechten over!
+    includeItems.push("folderPermissions"); 
   }
 
-  // Als er per ongeluk helemaal niets is aangevinkt, vallen we terug op de wildcard '*'
+  // Fallback naar alles
   const finalInclude = includeItems.length > 0 ? includeItems : ["*"];
 
-  // 2. Bouw de officiële payload op
   const payload = {
     sourceProjectId: cloneData.sourceProjectId,
     include: finalInclude,
@@ -72,10 +71,9 @@ export const cloneProject = async (token, region, cloneData) => {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`API Fout bij klonen (${response.status}): ${errorData.message || response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(`Trimble Fout (${response.status}): ${errorText}`);
   }
 
-  // Trimble geeft een 202 (QUEUED) terug. Dit object bevat o.a. { cloneId, status }
   return await response.json();
 };

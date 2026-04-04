@@ -75,8 +75,10 @@ function App() {
       alert(`Het project wordt nu op de achtergrond aangemaakt door Trimble.\nDit kan een paar minuten duren. Ververs straks de projectenlijst om het resultaat te zien.`);
       
     } catch (error) {
-      Logger.error("Fout bij klonen van project:", error);
-      alert("Er is een fout opgetreden bij het klonen van het project. Check de logs voor meer details.");
+      // Vraag expliciet om de message en de stacktrace!
+      Logger.error("Fout bij klonen van project:", error.message, error.stack);
+      alert(`Er is een fout opgetreden: ${error.message}`);
+    }
     } finally {
       // Zet de laad-animatie weer uit, of het nu gelukt is of niet
       setIsLoading(false);
