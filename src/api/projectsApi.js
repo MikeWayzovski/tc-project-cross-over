@@ -95,3 +95,24 @@ export const getCloneStatus = async (token, region, cloneId) => {
   
   return await response.json();
 };
+
+export const getProjectSnapshot = async (token, region, projectId) => {
+  const baseUrl = getBaseUrlForRegion(region);
+  
+  // We halen maximaal 100.000 items op, en filteren direct op mappen en bestanden
+  const url = `${baseUrl}/tc/api/2.0/files/fs/snapshot?projectId=${projectId}&objectTypes=FILE,FOLDER&maxItems=100000`;
+
+  const response = await fetch(url, {
+    headers: { 
+      'Authorization': `Bearer ${token}`, 
+      'Accept': 'application/json' 
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Trimble Fout bij ophalen snapshot (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+};

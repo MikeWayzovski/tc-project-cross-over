@@ -314,6 +314,8 @@ function App() {
                   {cloningProject ? (
                     <ProjectCloneWizard 
                       sourceProject={cloningProject} 
+                      region={region} 
+                      getValidToken={getValidToken} 
                       onClose={() => setCloningProject(null)} 
                       onClone={handleCloneSubmit} 
                     />
