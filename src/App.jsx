@@ -61,22 +61,47 @@ function App() {
     
     setCloningProject(null); 
     setIsLoading(true);
-    setLoadingText(`Kloon-opdracht naar Trimble sturen...`);
+    setLoadingText(`Kloon-opdracht indienen...`);
 
     try {
       const token = await getValidToken();
       const cloneResponse = await cloneProject(token, region, cloneData);
+      const cloneId = cloneResponse.cloneId;
       
-      Logger.info("Kloon-opdracht succesvol in de wachtrij geplaatst!", cloneResponse);
-      
-      alert(`Het project wordt nu op de achtergrond aangemaakt door Trimble.\nDit kan een paar minuten duren. Ververs straks de projectenlijst om het resultaat te zien.`);
-      
+      Logger.info("Kloon-opdracht in de wachtrij:", cloneId);
+
+      // Start Polling mechanisme
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusUpdate = await getCloneStatus(token, region, cloneId);
+          Logger.info(`Kloon status voor ${cloneId}: ${statusUpdate.status}`);
+
+          if (statusUpdate.status === 'COMPLETED') {
+            clearInterval(pollInterval);
+            setIsLoading(false);
+            setLoadingText('');
+            alert(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`);
+            loadProjects(); // Ververs de lijst nu we weten dat hij er is
+          } else if (statusUpdate.status === 'FAILED') {
+            clearInterval(pollInterval);
+            setIsLoading(false);
+            setLoadingText('');
+            alert(`Het klonen is mislukt aan de kant van Trimble.`);
+          } else {
+            // Nog bezig (QUEUED of IN_PROGRESS)
+            setLoadingText(`Trimble is bezig met kopiëren... Status: ${statusUpdate.status}`);
+          }
+        } catch (pollError) {
+          Logger.error("Fout tijdens pollen:", pollError);
+          clearInterval(pollInterval);
+        }
+      }, 5000); // Check elke 5 seconden
+
     } catch (error) {
-      Logger.error("Fout bij klonen van project:", error.message, error.stack);
-      alert(`Er is een fout opgetreden bij het klonen: ${error.message}\nCheck de logs voor meer details.`);
-    } finally {
+      Logger.error("Fout bij starten van kloon:", error.message);
       setIsLoading(false);
       setLoadingText('');
+      alert(`Er is een fout opgetreden: ${error.message}`);
     }
   };
 
