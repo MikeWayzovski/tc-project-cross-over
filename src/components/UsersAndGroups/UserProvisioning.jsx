@@ -25,55 +25,96 @@ const UserProvisioning = ({ projects, region }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  // -- NIEUWE STATE VOOR DE "COPY USER" FEATURE --
+  // -- STATE VOOR COPY USER --
   const [projectUsers, setProjectUsers] = useState([]); 
   const [selectedSourceUserId, setSelectedSourceUserId] = useState(''); 
   const [sourceUserDetails, setSourceUserDetails] = useState(null); 
 
-  // Ophalen van gebruikers en groepen als er een bronproject wordt gekozen
+  // -- NIEUW: STATE VOOR DE INNER CIRCLE --
+  const [innerCircleUsers, setInnerCircleUsers] = useState([]);
+  const [isLoadingInnerCircle, setIsLoadingInnerCircle] = useState(false);
+
+  // 1. Haal de "Inner Circle" op de achtergrond op
+  useEffect(() => {
+    const fetchInnerCircle = async () => {
+      if (!projects || projects.length === 0) return;
+      setIsLoadingInnerCircle(true);
+      
+      try {
+        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        
+        // Sorteer de bestaande projecten lokaal op 'lastVisitedOn' of 'modifiedOn' (nieuwste eerst)
+        const recentProjects = [...projects].sort((a, b) => {
+          const dateA = new Date(a.lastVisitedOn || a.modifiedOn || 0).getTime();
+          const dateB = new Date(b.lastVisitedOn || b.modifiedOn || 0).getTime();
+          return dateB - dateA;
+        }).slice(0, 5); // Pak alleen de top 5
+
+        const allUsers = [];
+        const seenIds = new Set();
+
+        // Haal de gebruikers op voor deze 5 projecten
+        for (const proj of recentProjects) {
+          try {
+            const users = await getProjectUsers(token, region, proj.id);
+            users.forEach(u => {
+              if (!seenIds.has(u.id)) {
+                seenIds.add(u.id);
+                // Bewaar ook in welk project we deze persoon vonden, dit is straks onze 'Source'!
+                allUsers.push({ ...u, foundInProjectId: proj.id, foundInProjectName: proj.name });
+              }
+            });
+          } catch(e) {
+            // Negeer individuele project-foutjes stilzwijgend
+          }
+        }
+        
+        // Sorteer het uiteindelijke lijstje netjes op voornaam (A-Z)
+        allUsers.sort((a, b) => a.firstName.localeCompare(b.firstName));
+        setInnerCircleUsers(allUsers);
+        
+      } catch(error) {
+        Logger.warn("Kon inner circle niet ophalen", error);
+      } finally {
+        setIsLoadingInnerCircle(false);
+      }
+    };
+    
+    fetchInnerCircle();
+  }, [projects, region, getAccessTokenSilently]);
+
+  // 2. Ophalen van gebruikers en groepen als er een (handmatig) bronproject wordt gekozen
   useEffect(() => {
     const fetchTemplateData = async () => {
       if (!sourceProjectId) {
         setSourceGroups([]);
         setProjectUsers([]);
-        setSelectedSourceUserId('');
-        setSourceUserDetails(null);
         return;
       }
-      
       try {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
-        
-        // 1. Haal de groepen op
         const groups = await getProjectGroups(token, region, sourceProjectId);
         setSourceGroups(groups || []);
         setSelectedGroupNames([]); 
         
-        // 2. Haal alle gebruikers uit dit project op (voor de dropdown)
         const users = await getProjectUsers(token, region, sourceProjectId);
         setProjectUsers(users || []);
-        
       } catch (error) {
         Logger.error("Fout bij ophalen sjabloon data:", error);
       }
     };
-    
     fetchTemplateData();
   }, [sourceProjectId, region, getAccessTokenSilently]);
 
-  // Haal de diepe details op als er een bron-gebruiker is geselecteerd
+  // 3. Haal de diepe details op als er een bron-gebruiker is geselecteerd
   useEffect(() => {
     const fetchUserDetails = async () => {
-      // Controleer nu ook of we wel een sourceProjectId hebben
       if (!selectedSourceUserId || !sourceProjectId) {
         setSourceUserDetails(null);
         return;
       }
-      
       try {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
-        
-        // FIX: Geef het sourceProjectId mee als 3e parameter!
         const details = await getUserDetails(token, region, sourceProjectId, selectedSourceUserId);
         setSourceUserDetails(details);
         
@@ -84,30 +125,18 @@ const UserProvisioning = ({ projects, region }) => {
         Logger.error("Fout bij ophalen user details:", error);
       }
     };
-    
     fetchUserDetails();
-  }, [selectedSourceUserId, sourceProjectId, region, getAccessTokenSilently]); // <-- sourceProjectId toegevoegd aan dependencies
+  }, [selectedSourceUserId, sourceProjectId, region, getAccessTokenSilently]);
 
-  const validateEmail = (mail) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(mail);
-  };
+  const validateEmail = (mail) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
 
   const handleEmailBlur = () => {
-    if (email && !validateEmail(email)) {
-      setEmailError('Voer een geldig e-mailadres in.');
-    } else {
-      setEmailError('');
-    }
+    if (email && !validateEmail(email)) setEmailError('Voer een geldig e-mailadres in.');
+    else setEmailError('');
   };
 
-  const toggleTargetProject = (id) => {
-    setTargetProjectIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
-  };
-
-  const toggleGroupName = (name) => {
-    setSelectedGroupNames(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
-  };
+  const toggleTargetProject = (id) => setTargetProjectIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
+  const toggleGroupName = (name) => setSelectedGroupNames(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
 
   const handleOpenConfirm = () => {
     if (!validateEmail(email)) {
@@ -121,7 +150,6 @@ const UserProvisioning = ({ projects, region }) => {
     setIsConfirmOpen(true);
   };
 
-  // --- JOUW VOLLEDIGE, BESTAANDE ONBOARDING LOGICA ---
   const handleExecute = async () => {
     setIsConfirmOpen(false);
     setIsProcessing(true);
@@ -152,26 +180,21 @@ const UserProvisioning = ({ projects, region }) => {
         
         for (const targetGroup of targetGroups) {
           const isDesiredGroup = selectedGroupNames.some(sgn => sgn.toLowerCase() === targetGroup.name.toLowerCase());
-          
-          // Kijk of de gebruiker in deze groep zit
           const groupUsers = await getGroupUsers(token, region, targetGroup.id);
           const isInGroup = groupUsers.some(u => u.id === user.id);
 
           if (isDesiredGroup && !isInGroup) {
-            // Moet er in, maar zit er niet in -> TOEVOEGEN
             const success = await addUserToGroup(token, region, targetGroup.id, user.id);
             if (success) Logger.info(`Toegevoegd aan groep: "${targetGroup.name}".`);
             else Logger.warn(`Fout bij toevoegen aan groep "${targetGroup.name}".`);
-          
           } else if (!isDesiredGroup && isInGroup) {
-            // Zit er in, maar hoort er NIET in -> VERWIJDEREN (Cleanup)
             const success = await removeUserFromGroup(token, region, targetGroup.id, user.id);
             if (success) Logger.info(`Verwijderd uit ongewenste groep: "${targetGroup.name}".`);
             else Logger.warn(`Fout bij verwijderen uit groep "${targetGroup.name}".`);
           }
         }
 
-        // 3. GROEPEN AANMAKEN (Sjabloongroepen die nog helemaal niet bestaan in het doelproject)
+        // 3. GROEPEN AANMAKEN
         for (const desiredGroupName of selectedGroupNames) {
           const existsInTarget = targetGroups.some(g => g.name.toLowerCase() === desiredGroupName.toLowerCase());
           
@@ -215,23 +238,57 @@ const UserProvisioning = ({ projects, region }) => {
           </div>
           <div className="card-body">
             
-            {/* STAP 1: KIES BRON (Nieuwe UI!) */}
+            {/* STAP 1: KIES BRON (Met Inner Circle!) */}
             <h6 className="text-primary mb-3">1. Selecteer Rechten-sjabloon (Bron)</h6>
             <div className="bg-light p-3 rounded mb-4 border">
               
-              <label className="form-label small fw-bold">Selecteer een project om gebruikers en groepen uit te laden</label>
-              <select className="form-select mb-3" value={sourceProjectId} onChange={e => setSourceProjectId(e.target.value)} disabled={isProcessing}>
+              <label className="form-label small fw-bold text-success d-flex align-items-center">
+                <ModusIcon name="lightning" size="16px" extraClasses="me-1" /> Snel kopiëren (Inner Circle)
+              </label>
+              <div className="d-flex align-items-center mb-3">
+                <select 
+                  className="form-select border-success" 
+                  value={innerCircleUsers.some(u => u.id === selectedSourceUserId) ? selectedSourceUserId : ""} 
+                  onChange={e => {
+                    const uid = e.target.value;
+                    if (uid) {
+                      const user = innerCircleUsers.find(u => u.id === uid);
+                      // Magie: We zetten zowel de user ID als het bijbehorende Project ID!
+                      setSourceProjectId(user.foundInProjectId);
+                      setSelectedSourceUserId(uid);
+                    } else {
+                      setSelectedSourceUserId('');
+                    }
+                  }} 
+                  disabled={isProcessing || isLoadingInnerCircle}
+                >
+                  <option value="">-- Kies een recente collega --</option>
+                  {innerCircleUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
+                  ))}
+                </select>
+                {isLoadingInnerCircle && <div className="spinner-border spinner-border-sm text-success ms-3" role="status"></div>}
+              </div>
+
+              <div className="text-center text-muted small mb-3">-- OF --</div>
+
+              <label className="form-label small fw-bold">Zoek handmatig in specifiek project</label>
+              <select className="form-select mb-3" value={sourceProjectId} onChange={e => {
+                  setSourceProjectId(e.target.value);
+                  setSelectedSourceUserId(''); // Reset gebruiker als we van project wisselen
+                }} disabled={isProcessing}>
                 <option value="">-- Kies een project --</option>
                 {projects.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
 
-              {sourceProjectId && projectUsers.length > 0 && (
+              {/* Toon de project users dropdown alleen als we via de handmatige flow gaan (en hij niet al is geselecteerd via de inner circle) */}
+              {sourceProjectId && projectUsers.length > 0 && !innerCircleUsers.some(u => u.id === selectedSourceUserId) && (
                 <>
-                  <label className="form-label small fw-bold">Kopieer rechten van bestaande collega (Optioneel)</label>
+                  <label className="form-label small fw-bold mt-2">Kies collega uit project</label>
                   <select className="form-select border-primary" value={selectedSourceUserId} onChange={e => setSelectedSourceUserId(e.target.value)} disabled={isProcessing}>
-                    <option value="">-- Handmatig selecteren --</option>
+                    <option value="">-- Selecteer collega --</option>
                     {projectUsers.map(u => (
                       <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
                     ))}
@@ -278,7 +335,7 @@ const UserProvisioning = ({ projects, region }) => {
                   <label className="form-label small fw-bold mb-2 border-bottom pb-2 d-block">Te koppelen groepen:</label>
                   <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                     {sourceGroups.length === 0 ? (
-                      <span className="text-muted small">Kies eerst een bronproject.</span>
+                      <span className="text-muted small">Kies eerst een bron in stap 1.</span>
                     ) : sourceGroups.map(g => (
                       <div className="form-check" key={g.id}>
                         <input className="form-check-input" type="checkbox" id={`group-${g.id}`} checked={selectedGroupNames.includes(g.name)} onChange={() => toggleGroupName(g.name)} disabled={isProcessing} />
@@ -361,7 +418,7 @@ const UserProvisioning = ({ projects, region }) => {
           <div className="card shadow-sm border-0 h-100 bg-light d-flex align-items-center justify-content-center text-center p-4">
             <ModusIcon name="user" size="48px" extraClasses="text-secondary mb-3 opacity-50" />
             <p className="text-muted small">
-              Selecteer een collega in stap 1 om zijn of haar rechtenprofiel in te zien.
+              Selecteer een collega via de 'Snel kopiëren' of project-lijst om zijn of haar rechtenprofiel in te zien.
             </p>
           </div>
         )}
