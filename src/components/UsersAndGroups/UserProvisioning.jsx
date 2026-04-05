@@ -6,7 +6,7 @@ import { addUserToProject, getUserByEmail, getProjectUsers, getUserDetails } fro
 import { Logger } from '../../utils/logger';
 import ConfirmModal from '../Modus/ConfirmModal';
 
-const UserProvisioning = ({ projects, region }) => {
+const UserProvisioning = ({ projects, region, showToast }) => {
   const { getAccessTokenSilently } = useAuth();
   
   // -- BASIS STATE --
@@ -180,7 +180,9 @@ const UserProvisioning = ({ projects, region }) => {
       return;
     }
     if (targetProjectIds.length === 0 || selectedGroupNames.length === 0) {
-      alert("Kies minimaal één groep en minimaal één doel-project!");
+      if (showToast) {
+        showToast("Kies minimaal één groep en minimaal één doel-project!", "warning");
+      }
       return;
     }
     setIsConfirmOpen(true);
@@ -255,11 +257,15 @@ const UserProvisioning = ({ projects, region }) => {
       }
       
       Logger.info("🎉 Onboarding Sync voltooid!");
-      alert("Onboarding succesvol voltooid! Controleer de systeemlogs voor de details.");
+      if (showToast) {
+        showToast("Onboarding succesvol voltooid! Controleer de systeemlogs voor de details.", "success");
+      }
       
     } catch (error) {
       Logger.error(`Kritieke fout: ${error.message}`);
-      alert(`Er is een fout opgetreden: ${error.message}`);
+      if (showToast) {
+        showToast(`Er is een fout opgetreden: ${error.message}`, "danger");
+      }
     } finally {
       setIsProcessing(false);
     }
