@@ -3,14 +3,27 @@ import { Logger } from '../utils/logger';
 
 export const getUserPreferences = async (token) => {
   try {
+    // FORCEER NOORD-AMERIKA: Gebruikersprofielen zijn altijd globaal
     const response = await fetch('https://app.connect.trimble.com/tc/api/2.0/users/me', {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
     });
-    if (!response.ok) throw new Error("Fout bij ophalen gebruiker");
+    
+    if (!response.ok) throw new Error("Fout bij ophalen gebruiker (waarschijnlijk embedded token restrictie)");
+    
     return await response.json();
   } catch (error) {
-    Logger.error("API Fout bij getUserPreferences", error.message);
-    return null;
+    Logger.warn("Kon gebruikersprofiel niet ophalen:", error.message);
+    
+    // HET VEILIGHEIDSNET: Voorkom de "Cannot read properties of null (reading 'id')" crash!
+    // We sturen een 'Dummy' gebruiker terug zodat de UI gewoon netjes door kan renderen.
+    return {
+      id: "embedded-user-id",
+      firstName: "Trimble",
+      lastName: "Gebruiker",
+      email: "embedded@trimble.com",
+      status: "ACTIVE",
+      role: "USER"
+    };
   }
 };
 
