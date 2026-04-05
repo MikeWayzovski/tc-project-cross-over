@@ -25,6 +25,9 @@ import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 //refactor: split clone logic in App.jsx over naar services/cloneService.js, zodat App.jsx overzichtelijk blijft en de complexe kloon-logica netjes gescheiden is van de UI logica. In cloneService.js komt dan de hele executeProjectClone functie te staan, die door App.jsx wordt aangeroepen wanneer een kloon-opdracht wordt gestart. Op die manier blijft App.jsx vooral gericht op state management en UI, terwijl cloneService.js zich volledig richt op het uitvoeren van het kloonproces, inclusief het pollen van de status en het kopiëren van bestanden.
 import { executeProjectClone } from './services/cloneService';
+//refactor: maak een aparte Toast component aan in src/components/Modus/Toast.jsx, zodat de code voor het tonen van toastmeldingen netjes gescheiden is van de rest van de UI logica in App.jsx. Deze Toast component kan dan worden hergebruikt op meerdere plekken in de app als dat nodig is, en maakt App.jsx overzichtelijker door de toast-specifieke code uit te besteden.
+import { useToast } from './hooks/useToast';
+import Toast from './components/Modus/Toast';
 
 
 function App() {
@@ -49,12 +52,8 @@ function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   
   const [cloningProject, setCloningProject] = useState(null);
-  const [toast, setToast] = useState(null);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 5000); 
-  };
+  const { toast, showToast, hideToast } = useToast();
+  
 
   // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -97,7 +96,7 @@ function App() {
       showToast(error.message, 'danger');
     }
   };
-  
+
   useEffect(() => {
     if (embeddedProject) {
       const projectRegion = embeddedProject.location || embeddedProject.region; 
@@ -344,29 +343,8 @@ function App() {
         </div>
       </div>
       
-      {toast && (
-        <div 
-          className={`alert alert-${toast.type} shadow-lg d-flex align-items-center`} 
-          style={{ 
-            position: 'absolute', 
-            top: '20px', 
-            right: '20px', 
-            zIndex: 9999, 
-            minWidth: '350px',
-            borderLeft: `5px solid ${toast.type === 'success' ? '#00853B' : toast.type === 'warning' ? '#E56A00' : '#D22D2D'}`
-          }}
-        >
-          <ModusIcon 
-            name={toast.type === 'success' ? 'check-circle' : 'warning'} 
-            size="24px" 
-            extraClasses={`me-3 text-${toast.type}`} 
-          />
-          <div className="fw-semibold">
-            {toast.message}
-          </div>
-          <button type="button" className="btn-close ms-auto" onClick={() => setToast(null)}></button>
-        </div>
-      )}
+      {/* ZWEVENDE TOAST NOTIFICATIE */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }
