@@ -23,6 +23,9 @@ import ProjectCloneWizard from './components/Projects/ProjectCloneWizard';
 import { getProjects, cloneProject, getCloneStatus, getProjectSnapshot, downloadFileBlob, uploadFileBlob } from './api/projectsApi';
 import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
+//refactor: split clone logic in App.jsx over naar services/cloneService.js, zodat App.jsx overzichtelijk blijft en de complexe kloon-logica netjes gescheiden is van de UI logica. In cloneService.js komt dan de hele executeProjectClone functie te staan, die door App.jsx wordt aangeroepen wanneer een kloon-opdracht wordt gestart. Op die manier blijft App.jsx vooral gericht op state management en UI, terwijl cloneService.js zich volledig richt op het uitvoeren van het kloonproces, inclusief het pollen van de status en het kopiëren van bestanden.
+import { executeProjectClone } from './services/cloneService';
+
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
@@ -62,138 +65,39 @@ function App() {
   };
 
   const handleCloneSubmit = async (cloneData) => {
-    Logger.info("Kloon data ontvangen uit wizard:", cloneData);
-    
     setCloningProject(null); 
     setIsLoading(true);
     setLoadingText(`Kloon-opdracht indienen...`);
 
     try {
       const token = await getValidToken();
-      const cloneResponse = await cloneProject(token, region, cloneData);
-      const cloneId = cloneResponse.cloneId;
       
-      Logger.info("Kloon-opdracht in de wachtrij:", cloneId);
-
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusUpdate = await getCloneStatus(token, region, cloneId);
-          Logger.info(`Pollen... status voor ${cloneId} is nu: ${statusUpdate.status}`);
-
-          if (statusUpdate.status === 'DONE') {
-            clearInterval(pollInterval); 
-            
-            const newProjectId = statusUpdate.result?.projectId;
-            
-            // --- FASE 2.3: BESTANDEN KOPIËREN ---
-            if (cloneData.filesToCopy && cloneData.filesToCopy.length > 0) {
-              setLoadingText('Mappenstructuur vergelijken voor bestandenoverdracht...');
-              
-              try {
-                const oldSnapshot = await getProjectSnapshot(token, region, cloneData.sourceProjectId);
-                const newSnapshot = await getProjectSnapshot(token, region, newProjectId);
-                
-                // Helper functie om ID's naar unieke tekst-paden te vertalen
-                const buildPaths = (items) => {
-                  const map = {};
-                  items.forEach(item => map[item.id] = item);
-                  
-                  const getPath = (id) => {
-                    if (!id || !map[id]) return '';
-                    const node = map[id];
-                    // FIX: Als de map geen parent heeft, is het de Root map.
-                    // Door deze altijd 'ROOT' te noemen, vangen we naamsverschillen tussen projecten op!
-                    if (!node.pid) return 'ROOT'; 
-                    const parentPath = getPath(node.pid);
-                    return parentPath ? `${parentPath}/${node.nm}` : node.nm;
-                  };
-                  
-                  const idToPath = {};
-                  const pathToId = {};
-                  items.filter(i => i.tp === 'FOLDER').forEach(f => {
-                    const path = getPath(f.id);
-                    idToPath[f.id] = path;
-                    pathToId[path] = f.id;
-                  });
-                  return { idToPath, pathToId };
-                };
-                
-                const oldPaths = buildPaths(oldSnapshot.items || []);
-                const newPaths = buildPaths(newSnapshot.items || []);
-                
-                let successCount = 0;
-                let failCount = 0;
-
-                // 3. Kopieer elk bestand naar de juiste nieuwe map
-                for (let i = 0; i < cloneData.filesToCopy.length; i++) {
-                  const file = cloneData.filesToCopy[i];
-                  setLoadingText(`Bestand overzetten (${i + 1}/${cloneData.filesToCopy.length}): ${file.nm}`);
-                  
-                  // Zoek op welk pad dit bestand vroeger stond, en zoek de ID van dat pad in het nieuwe project
-                  const folderPath = oldPaths.idToPath[file.pid];
-                  const newFolderId = newPaths.pathToId[folderPath];
-                  
-                  if (newFolderId) {
-                    try {
-                      // HET MAGISCHE OVERPOMP MOMENT
-                      const fileBlob = await downloadFileBlob(token, region, file.id, file.vid);
-                      await uploadFileBlob(token, region, newFolderId, file.nm, fileBlob);
-                      
-                      successCount++;
-                    } catch (err) {
-                      Logger.error(`Overzetten mislukt voor ${file.nm}:`, err.message || err);
-                      failCount++;
-                    }
-                  } else {
-                    Logger.warn(`Doelmap niet gevonden in nieuwe project voor: ${file.nm} (pad: ${folderPath})`);
-                    failCount++;
-                  }
-                }
-                
-                setIsLoading(false);
-                setLoadingText('');
-                showToast(`Project aangemaakt! ${successCount} bestanden gekopieerd (${failCount} mislukt).`, successCount > 0 ? 'success' : 'warning');
-                
-              } catch (error) {
-                Logger.error("Fout bij het overzetten van bestanden:", error.message || error);
-                setIsLoading(false);
-                setLoadingText('');
-                showToast(`Project is aangemaakt, maar er ging iets mis bij het kopiëren van de bestanden.`, 'warning');
-              }
-            } else {
-              setIsLoading(false);
-              setLoadingText('');
-              showToast(`Project '${cloneData.newProjectName}' is succesvol aangemaakt!`, 'success');
-            }
-
-            await loadProjects();
-            
-          } else if (statusUpdate.status === 'ERROR') {
-            clearInterval(pollInterval);
-            setIsLoading(false);
-            setLoadingText('');
-            
-            const errorMsg = statusUpdate.error?.message || "Onbekende fout";
-            Logger.error(`Klonen mislukt bij Trimble. Reden: ${errorMsg}`);
-            showToast(`Klonen mislukt: ${errorMsg}`, 'danger');
-            
-          } else {
-            let uiStatus = statusUpdate.status === 'QUEUED' ? 'In de wachtrij...' : 'Trimble is aan het kopiëren...';
-            setLoadingText(`Bezig met klonen (${uiStatus})`);
-          }
-        } catch (pollError) {
-          Logger.error("Fout tijdens pollen van API:", pollError.message, pollError.stack);
+      // Roep de externe service aan en geef callbacks mee voor de UI
+      await executeProjectClone({
+        token,
+        region,
+        cloneData,
+        onProgress: (text) => setLoadingText(text),
+        onSuccess: async (msg, type) => {
+          setIsLoading(false);
+          setLoadingText('');
+          showToast(msg, type);
+          await loadProjects(); // Ververs de lijst
+        },
+        onError: (msg) => {
+          setIsLoading(false);
+          setLoadingText('');
+          showToast(msg, 'danger');
         }
-      }, 5000);
-
+      });
+      
     } catch (error) {
-      Logger.error("Fout bij starten van kloon:", error.message, error.stack);
       setIsLoading(false);
       setLoadingText('');
-      showToast(`Er is een fout opgetreden bij het indienen van de opdracht: ${error.message}`, 'danger');
+      showToast(error.message, 'danger');
     }
   };
-
+  
   useEffect(() => {
     if (embeddedProject) {
       const projectRegion = embeddedProject.location || embeddedProject.region; 
