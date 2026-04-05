@@ -261,13 +261,27 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
         </div>
       </div>
 
+      {/* FOOTER ACTIES */}
       <div className="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
         <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Annuleren</button>
-        <button type="button" className="btn btn-primary d-flex align-items-center" onClick={handleSubmit} disabled={!newProjectName.trim()}>
+        {/* Deze knop opent nu eerst de waarschuwing! */}
+        <button type="button" className="btn btn-primary d-flex align-items-center" onClick={handleOpenConfirm} disabled={!newProjectName.trim()}>
           <ModusIcon name="check" size="18px" extraClasses="me-2" />
           Project Aanmaken
         </button>
       </div>
+
+      {/* DE WAARSCHUWING MODAL */}
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        title="Project Klonen Bevestigen"
+        message={`Je staat op het punt een nieuw project genaamd '${newProjectName}' aan te maken op basis van '${sourceProject?.name}'. Weet je zeker dat je wilt doorgaan?`}
+        confirmText="Ja, start klonen"
+        cancelText="Annuleren"
+        variant="primary" // Blauwe knop, want het is een positieve actie!
+        onConfirm={executeClone}
+        onCancel={() => setIsConfirmOpen(false)}
+      />
     </div>
   );
 };
