@@ -333,7 +333,8 @@ function App() {
               {activePage === 'settings' && (
                 <Settings 
                   isDarkMode={isDarkMode} 
-                  setIsDarkMode={setIsDarkMode} 
+                  setIsDarkMode={setIsDarkMode}
+                  showToast={showToast} 
                 />
               )}
             

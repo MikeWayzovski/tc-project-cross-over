@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ModusIcon from '../Modus/ModusIcon';
 import { Logger } from '../../utils/logger';
 
-const Settings = ({ isDarkMode, setIsDarkMode }) => {
+const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
   // Slimme state: Haal uit geheugen OF gebruik standaardwaarde
   const [sendInvite, setSendInvite] = useState(() => JSON.parse(localStorage.getItem('trimble_send_invite') ?? 'true'));
   const [autoCreateGroups, setAutoCreateGroups] = useState(() => JSON.parse(localStorage.getItem('trimble_auto_create_groups') ?? 'true'));
@@ -27,6 +27,9 @@ const Settings = ({ isDarkMode, setIsDarkMode }) => {
       Logger.clearLogs();
       setLogCount(0);
       Logger.info("Systeemlogs handmatig gewist door gebruiker.");
+      if (showToast) {
+        showToast('Systeemlogs succesvol uit het geheugen gewist!', 'success');
+      }
     }
   };
 
