@@ -211,7 +211,77 @@ function App() {
   if (!hasAccess && !isEmbedded) {
     return <div className="p-5 text-center">Wachten op authenticatie...</div>;
   }
+  
+  // --- PAGE ROUTER ---
+  // Deze functie bepaalt welke "Pagina" er gerenderd moet worden, 
+  // zodat we geen gigantische kerstboom aan && statements in onze HTML hebben.
+  const renderActivePage = () => {
+    switch (activePage) {
+      case 'projects':
+        return (
+          <>
+            {cloningProject ? (
+              <ProjectCloneWizard 
+                sourceProject={cloningProject} 
+                region={region} 
+                getValidToken={getValidToken} 
+                onClose={() => setCloningProject(null)} 
+                onClone={handleCloneSubmit} 
+              />
+            ) : selectedProject ? (
+              <ProjectDetails 
+                project={selectedProject} 
+                region={region} 
+                onBack={() => setSelectedProject(null)} 
+              />
+            ) : viewMode === 'grid' ? (
+              <ProjectGrid 
+                projects={projects} 
+                searchQuery={searchQuery} 
+                onProjectClick={openProject} 
+                onCloneClick={(p) => setCloningProject(p)} 
+              />
+            ) : (
+              <ProjectList 
+                projects={projects} 
+                searchQuery={searchQuery} 
+                onProjectClick={openProject} 
+                onCloneClick={(p) => setCloningProject(p)} 
+              />
+            )}
+          </>
+        );
 
+      case 'users':
+        return <UserProvisioning projects={projects} region={region} />;
+
+      case 'groups':
+        return (
+          <div className="d-flex flex-column h-100">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <div><h3 className="mb-0">Bedrijfsbrede Groepen Audit</h3></div>
+            </div>
+            <div style={{ flexGrow: 1, overflowY: 'auto' }}>
+              <GroupCanvas groups={groups} isLoading={isLoading && groups.length === 0} />
+            </div>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <Settings 
+            isDarkMode={isDarkMode} 
+            setIsDarkMode={setIsDarkMode} 
+            showToast={showToast} 
+          />
+        );
+
+      default:
+        return <div className="text-center p-5 text-muted">Pagina niet gevonden</div>;
+    }
+  };
+
+  
   return (
     <div className="modus-layout">
       {!isEmbedded && (
@@ -263,83 +333,9 @@ function App() {
             </div>
           )}
 
-          {activePage === 'projects' && !selectedProject && !cloningProject && (
-            <ProjectToolbar 
-              viewMode={viewMode} 
-              setViewMode={setViewMode} 
-              region={region} 
-              setRegion={setRegion} 
-              searchQuery={searchQuery} 
-              setSearchQuery={setSearchQuery}
-              onRefresh={loadProjects} 
-              isEmbedded={isEmbedded} 
-            />
-          )}
+          
 
-          <div className="modus-content-columns" style={{ flexGrow: 1, overflow: 'hidden' }}>
-            <div className="modus-content" style={{ overflowY: 'auto', height: '100%', padding: '20px' }}>
-              
-              {activePage === 'projects' && (
-                <>
-                  {cloningProject ? (
-                    <ProjectCloneWizard 
-                      sourceProject={cloningProject} 
-                      region={region} 
-                      getValidToken={getValidToken} 
-                      onClose={() => setCloningProject(null)} 
-                      onClone={handleCloneSubmit} 
-                    />
-                  ) : selectedProject ? (
-                    <ProjectDetails 
-                      project={selectedProject} 
-                      region={region} 
-                      onBack={() => setSelectedProject(null)} 
-                    />
-                  ) : (
-                    viewMode === 'grid' ? (
-                      <ProjectGrid 
-                        projects={projects} 
-                        searchQuery={searchQuery} 
-                        onProjectClick={openProject} 
-                        onCloneClick={(p) => setCloningProject(p)} 
-                      />
-                    ) : (
-                      <ProjectList 
-                        projects={projects} 
-                        searchQuery={searchQuery} 
-                        onProjectClick={openProject} 
-                        onCloneClick={(p) => setCloningProject(p)} 
-                      />
-                    )
-                  )}
-                </>
-              )}
-
-              {activePage === 'users' && <UserProvisioning projects={projects} region={region} />}
-              
-              {activePage === 'groups' && (
-                <div className="d-flex flex-column h-100">
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                      <h3 className="mb-0">Bedrijfsbrede Groepen Audit</h3>
-                    </div>
-                  </div>
-                  <div style={{ flexGrow: 1, overflowY: 'auto' }}>
-                    <GroupCanvas groups={groups} isLoading={isLoading && groups.length === 0} />
-                  </div>
-                </div>
-              )}
-              
-              {activePage === 'settings' && (
-                <Settings 
-                  isDarkMode={isDarkMode} 
-                  setIsDarkMode={setIsDarkMode}
-                  showToast={showToast} 
-                />
-              )}
-            
-            </div>
-          </div>
+          {renderActivePage()}
           <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={progress} />
         </div>
       </div>
