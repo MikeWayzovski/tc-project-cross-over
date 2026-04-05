@@ -4,7 +4,7 @@ import { getProjectSnapshot } from '../../api/projectsApi';
 import { Logger } from '../../utils/logger';
 import ConfirmModal from '../Modus/ConfirmModal';
 
-const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
 
 // --- HULP COMPONENT: Bestand Icoontjes Bepalen ---
 const getFileIcon = (filename) => {
@@ -84,6 +84,7 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
   const [nodeMap, setNodeMap] = useState({}); // Snelle lookup-tabel voor het aanvinken
   const [selectedIds, setSelectedIds] = useState(new Set()); // De actieve vinkjes
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
     const fetchSnapshot = async () => {
