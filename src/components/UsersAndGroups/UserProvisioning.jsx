@@ -64,14 +64,17 @@ const UserProvisioning = ({ projects, region }) => {
   // Haal de diepe details op als er een bron-gebruiker is geselecteerd
   useEffect(() => {
     const fetchUserDetails = async () => {
-      if (!selectedSourceUserId) {
+      // Controleer nu ook of we wel een sourceProjectId hebben
+      if (!selectedSourceUserId || !sourceProjectId) {
         setSourceUserDetails(null);
         return;
       }
       
       try {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
-        const details = await getUserDetails(token, region, selectedSourceUserId);
+        
+        // FIX: Geef het sourceProjectId mee als 3e parameter!
+        const details = await getUserDetails(token, region, sourceProjectId, selectedSourceUserId);
         setSourceUserDetails(details);
         
         // DIT IS DE BELANGRIJKE LOG VOOR DE VOLGENDE STAP:
@@ -83,7 +86,7 @@ const UserProvisioning = ({ projects, region }) => {
     };
     
     fetchUserDetails();
-  }, [selectedSourceUserId, region, getAccessTokenSilently]);
+  }, [selectedSourceUserId, sourceProjectId, region, getAccessTokenSilently]); // <-- sourceProjectId toegevoegd aan dependencies
 
   const validateEmail = (mail) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

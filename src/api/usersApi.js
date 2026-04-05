@@ -94,9 +94,12 @@ export const getProjectUsers = async (token, region, projectId) => {
   return await response.json();
 };
 
-export const getUserDetails = async (token, region, userId) => {
+export const getUserDetails = async (token, region, projectId, userId) => {
   const baseUrl = getBaseUrlForRegion(region);
-  const url = `${baseUrl}/tc/api/2.0/users/${userId}`;
+  
+  // FIX: Gebruik de project-specifieke endpoint in plaats van de globale, 
+  // dit voorkomt de 403 Forbidden permissie fout!
+  const url = `${baseUrl}/tc/api/2.0/projects/${projectId}/users/${userId}`;
 
   const response = await fetch(url, {
     method: 'GET',
@@ -108,7 +111,7 @@ export const getUserDetails = async (token, region, userId) => {
 
   if (!response.ok) {
     const errorText = await response.text();
-    Logger.error(`Fout bij ophalen details voor gebruiker ${userId} (${response.status}): ${errorText}`);
+    Logger.error(`Fout bij ophalen details voor gebruiker ${userId} in project ${projectId} (${response.status}): ${errorText}`);
     return null;
   }
 
