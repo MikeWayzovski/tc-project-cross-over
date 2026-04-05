@@ -100,16 +100,21 @@ function App() {
       const projectRegion = embeddedProject.location || embeddedProject.region; 
       
       if (projectRegion) {
-        let mappedRegion = 'Europa';
-        if (projectRegion.toLowerCase() === 'asia') mappedRegion = 'Azië';
-        if (projectRegion.toLowerCase() === 'aus') mappedRegion = 'Australië';
-        if (projectRegion.toLowerCase() === 'na') mappedRegion = 'Noord-Amerika';
+        const projLoc = projectRegion.toLowerCase();
+        let mappedRegion = 'Europa'; // Default
+        
+        // De kogelvrije checks:
+        if (projLoc === 'asia' || projLoc === 'ap') mappedRegion = 'Azië';
+        if (projLoc === 'aus' || projLoc === 'ap-au') mappedRegion = 'Australië';
+        if (projLoc === 'na' || projLoc === 'northamerica') mappedRegion = 'Noord-Amerika';
+        if (projLoc === 'eu' || projLoc === 'europe') mappedRegion = 'Europa';
         
         setRegion(mappedRegion);
         Logger.info(`Regio automatisch ingesteld op ${mappedRegion} via embedded project.`);
       }
     }
   }, [embeddedProject]);
+
 
   const getValidToken = async () => {
     let token = null;
@@ -167,9 +172,11 @@ function App() {
 
       const projLoc = (embeddedProject.location || embeddedProject.region || '').toLowerCase();
       let expectedRegion = 'Europa';
-      if (projLoc === 'asia') expectedRegion = 'Azië';
-      if (projLoc === 'aus') expectedRegion = 'Australië';
-      if (projLoc === 'na') expectedRegion = 'Noord-Amerika';
+      
+      if (projLoc === 'asia' || projLoc === 'ap') expectedRegion = 'Azië';
+      if (projLoc === 'aus' || projLoc === 'ap-au') expectedRegion = 'Australië';
+      if (projLoc === 'na' || projLoc === 'northamerica') expectedRegion = 'Noord-Amerika';
+      if (projLoc === 'eu' || projLoc === 'europe') expectedRegion = 'Europa';
 
       if (region !== expectedRegion) {
         Logger.warn(`Tijdelijke stop: React state (${region}) loopt nog fractie achter op Trimble (${expectedRegion}). Wachten...`);
