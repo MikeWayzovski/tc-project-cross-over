@@ -256,7 +256,7 @@ function App() {
         );
 
       case 'users':
-        return <UserProvisioning projects={projects} region={region} />;
+        return <UserProvisioning projects={projects} region={region} showToast={showToast} />;
 
       case 'groups':
         return (
