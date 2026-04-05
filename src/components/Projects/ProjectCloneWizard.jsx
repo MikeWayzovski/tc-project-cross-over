@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import ModusIcon from '../Modus/ModusIcon';
 import { getProjectSnapshot } from '../../api/projectsApi';
 import { Logger } from '../../utils/logger';
+import ConfirmModal from '../Modus/ConfirmModal';
+
+const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
 // --- HULP COMPONENT: Bestand Icoontjes Bepalen ---
 const getFileIcon = (filename) => {
@@ -149,11 +152,17 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
     setSelectedIds(newSelected);
   };
 
-  const handleSubmit = (e) => {
+  // Stap 1: Valideer en open de modal
+  const handleOpenConfirm = (e) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
+    setIsConfirmOpen(true);
+  };
 
-    // Filter alleen de bestanden uit de selectie (mappen regelt de copyFolders optie al!)
+  // Stap 2: Voer de echte kloon uit (wordt aangeroepen door de Modal)
+  const executeClone = () => {
+    setIsConfirmOpen(false); // Sluit de modal
+
     const filesToCopy = Array.from(selectedIds)
       .map(id => nodeMap[id])
       .filter(node => node && node.tp === 'FILE');
@@ -162,7 +171,7 @@ const ProjectCloneWizard = ({ sourceProject, region, getValidToken, onClose, onC
       sourceProjectId: sourceProject.id,
       newProjectName,
       options: { copySettings, copyMembers, copyGroups, copyFolders },
-      filesToCopy // Hier zit nu je lijst met bestand-objecten in!
+      filesToCopy 
     };
 
     onClone(cloneData);
