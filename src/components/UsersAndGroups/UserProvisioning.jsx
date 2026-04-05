@@ -30,11 +30,12 @@ const UserProvisioning = ({ projects, region }) => {
   const [selectedSourceUserId, setSelectedSourceUserId] = useState(''); 
   const [sourceUserDetails, setSourceUserDetails] = useState(null); 
 
-  // -- NIEUW: STATE VOOR DE INNER CIRCLE --
+  // -- STATE VOOR DE INNER CIRCLE --
   const [innerCircleUsers, setInnerCircleUsers] = useState([]);
   const [isLoadingInnerCircle, setIsLoadingInnerCircle] = useState(false);
+  const [isAutoCheckingGroups, setIsAutoCheckingGroups] = useState(false);
 
-  // 1. Haal de "Inner Circle" op de achtergrond op
+  // 1. Haal de "Inner Circle" op en onthoud in WELKE projecten ze zitten!
   useEffect(() => {
     const fetchInnerCircle = async () => {
       if (!projects || projects.length === 0) return;
@@ -43,33 +44,40 @@ const UserProvisioning = ({ projects, region }) => {
       try {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
         
-        // Sorteer de bestaande projecten lokaal op 'lastVisitedOn' of 'modifiedOn' (nieuwste eerst)
+        // Sorteer op laatst bezocht/gewijzigd en pak de top 5
         const recentProjects = [...projects].sort((a, b) => {
           const dateA = new Date(a.lastVisitedOn || a.modifiedOn || 0).getTime();
           const dateB = new Date(b.lastVisitedOn || b.modifiedOn || 0).getTime();
           return dateB - dateA;
-        }).slice(0, 5); // Pak alleen de top 5
+        }).slice(0, 5); 
 
-        const allUsers = [];
-        const seenIds = new Set();
+        const allUsersMap = new Map();
 
-        // Haal de gebruikers op voor deze 5 projecten
+        // Loop door de 5 projecten en bouw een profiel per gebruiker op
         for (const proj of recentProjects) {
           try {
             const users = await getProjectUsers(token, region, proj.id);
             users.forEach(u => {
-              if (!seenIds.has(u.id)) {
-                seenIds.add(u.id);
-                // Bewaar ook in welk project we deze persoon vonden, dit is straks onze 'Source'!
-                allUsers.push({ ...u, foundInProjectId: proj.id, foundInProjectName: proj.name });
+              if (u.status !== 'ACTIVE') return; // FIX 1: Negeer REMOVED collega's
+              
+              if (!allUsersMap.has(u.id)) {
+                allUsersMap.set(u.id, { 
+                  ...u, 
+                  primaryProjectId: proj.id, 
+                  primaryProjectName: proj.name,
+                  foundInProjectIds: [proj.id] // Onthoud de project ID's!
+                });
+              } else {
+                // Als we hem nog een keer tegenkomen, voeg het project toe aan zijn lijstje
+                allUsersMap.get(u.id).foundInProjectIds.push(proj.id);
               }
             });
           } catch(e) {
-            // Negeer individuele project-foutjes stilzwijgend
+            // Negeer individuele foutjes stilzwijgend
           }
         }
         
-        // Sorteer het uiteindelijke lijstje netjes op voornaam (A-Z)
+        const allUsers = Array.from(allUsersMap.values());
         allUsers.sort((a, b) => a.firstName.localeCompare(b.firstName));
         setInnerCircleUsers(allUsers);
         
@@ -83,7 +91,7 @@ const UserProvisioning = ({ projects, region }) => {
     fetchInnerCircle();
   }, [projects, region, getAccessTokenSilently]);
 
-  // 2. Ophalen van gebruikers en groepen als er een (handmatig) bronproject wordt gekozen
+  // 2. Ophalen van sjabloon GROEPEN zodra een project is gekozen
   useEffect(() => {
     const fetchTemplateData = async () => {
       if (!sourceProjectId) {
@@ -95,10 +103,12 @@ const UserProvisioning = ({ projects, region }) => {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
         const groups = await getProjectGroups(token, region, sourceProjectId);
         setSourceGroups(groups || []);
+        // Reset groep-selectie totdat de auto-checker het overneemt
         setSelectedGroupNames([]); 
         
         const users = await getProjectUsers(token, region, sourceProjectId);
-        setProjectUsers(users || []);
+        // Filter ook hier de handmatige lijst op ACTIVE
+        setProjectUsers(users ? users.filter(u => u.status === 'ACTIVE') : []);
       } catch (error) {
         Logger.error("Fout bij ophalen sjabloon data:", error);
       }
@@ -106,7 +116,37 @@ const UserProvisioning = ({ projects, region }) => {
     fetchTemplateData();
   }, [sourceProjectId, region, getAccessTokenSilently]);
 
-  // 3. Haal de diepe details op als er een bron-gebruiker is geselecteerd
+  // 3. AUTO-VINK GROEPEN: Scant in welke groepen de collega zit en vinkt ze aan
+  useEffect(() => {
+    const autoCheckUserGroups = async () => {
+      if (!selectedSourceUserId || sourceGroups.length === 0) return;
+      
+      setIsAutoCheckingGroups(true);
+      try {
+        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const autoSelectedGroups = [];
+
+        for (const group of sourceGroups) {
+          const gUsers = await getGroupUsers(token, region, group.id);
+          // Zit onze geselecteerde collega in deze groep?
+          if (gUsers.some(gu => gu.id === selectedSourceUserId)) {
+            autoSelectedGroups.push(group.name);
+          }
+        }
+        
+        // Vink de gevonden groepen aan!
+        setSelectedGroupNames(autoSelectedGroups);
+      } catch (error) {
+        Logger.warn("Fout tijdens het auto-vinken van groepen:", error);
+      } finally {
+        setIsAutoCheckingGroups(false);
+      }
+    };
+
+    autoCheckUserGroups();
+  }, [selectedSourceUserId, sourceGroups, region, getAccessTokenSilently]);
+
+  // 4. Haal details voor de User Card op
   useEffect(() => {
     const fetchUserDetails = async () => {
       if (!selectedSourceUserId || !sourceProjectId) {
@@ -117,10 +157,6 @@ const UserProvisioning = ({ projects, region }) => {
         const token = window.trimbleSandboxToken || await getAccessTokenSilently();
         const details = await getUserDetails(token, region, sourceProjectId, selectedSourceUserId);
         setSourceUserDetails(details);
-        
-        // DIT IS DE BELANGRIJKE LOG VOOR DE VOLGENDE STAP:
-        Logger.info("GEVONDEN USER DETAILS VOOR COPY:", details);
-
       } catch (error) {
         Logger.error("Fout bij ophalen user details:", error);
       }
@@ -150,6 +186,7 @@ const UserProvisioning = ({ projects, region }) => {
     setIsConfirmOpen(true);
   };
 
+  // --- UITVOER LOGICA ---
   const handleExecute = async () => {
     setIsConfirmOpen(false);
     setIsProcessing(true);
@@ -228,6 +265,9 @@ const UserProvisioning = ({ projects, region }) => {
     }
   };
 
+  // Helper om te zien of een gebruiker in de Inner Circle zit
+  const selectedInnerCircleUser = innerCircleUsers.find(u => u.id === selectedSourceUserId);
+
   return (
     <div className="user-provisioning row g-4">
       {/* LINKERKOLOM: Configuratie */}
@@ -247,22 +287,24 @@ const UserProvisioning = ({ projects, region }) => {
               </label>
               <div className="d-flex align-items-center mb-3">
                 <select 
-                  className="form-select border-success" 
-                  value={innerCircleUsers.some(u => u.id === selectedSourceUserId) ? selectedSourceUserId : ""} 
+                  className="form-select border-success fw-semibold text-success" 
+                  value={selectedInnerCircleUser ? selectedSourceUserId : ""} 
                   onChange={e => {
                     const uid = e.target.value;
                     if (uid) {
                       const user = innerCircleUsers.find(u => u.id === uid);
-                      // Magie: We zetten zowel de user ID als het bijbehorende Project ID!
-                      setSourceProjectId(user.foundInProjectId);
+                      // FIX 2: Vink automatisch de projecten aan waar deze collega in zit!
+                      setSourceProjectId(user.primaryProjectId);
                       setSelectedSourceUserId(uid);
+                      setTargetProjectIds(user.foundInProjectIds); 
                     } else {
                       setSelectedSourceUserId('');
+                      setTargetProjectIds([]);
                     }
                   }} 
                   disabled={isProcessing || isLoadingInnerCircle}
                 >
-                  <option value="">-- Kies een recente collega --</option>
+                  <option value="">-- Kies een recente, actieve collega --</option>
                   {innerCircleUsers.map(u => (
                     <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
                   ))}
@@ -275,7 +317,7 @@ const UserProvisioning = ({ projects, region }) => {
               <label className="form-label small fw-bold">Zoek handmatig in specifiek project</label>
               <select className="form-select mb-3" value={sourceProjectId} onChange={e => {
                   setSourceProjectId(e.target.value);
-                  setSelectedSourceUserId(''); // Reset gebruiker als we van project wisselen
+                  setSelectedSourceUserId(''); 
                 }} disabled={isProcessing}>
                 <option value="">-- Kies een project --</option>
                 {projects.map(p => (
@@ -283,12 +325,15 @@ const UserProvisioning = ({ projects, region }) => {
                 ))}
               </select>
 
-              {/* Toon de project users dropdown alleen als we via de handmatige flow gaan (en hij niet al is geselecteerd via de inner circle) */}
-              {sourceProjectId && projectUsers.length > 0 && !innerCircleUsers.some(u => u.id === selectedSourceUserId) && (
+              {sourceProjectId && projectUsers.length > 0 && !selectedInnerCircleUser && (
                 <>
                   <label className="form-label small fw-bold mt-2">Kies collega uit project</label>
-                  <select className="form-select border-primary" value={selectedSourceUserId} onChange={e => setSelectedSourceUserId(e.target.value)} disabled={isProcessing}>
-                    <option value="">-- Selecteer collega --</option>
+                  <select className="form-select border-primary" value={selectedSourceUserId} onChange={e => {
+                      setSelectedSourceUserId(e.target.value);
+                      // Auto-vink tenminste dit ene project aan
+                      setTargetProjectIds([sourceProjectId]);
+                    }} disabled={isProcessing}>
+                    <option value="">-- Selecteer actieve collega --</option>
                     {projectUsers.map(u => (
                       <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
                     ))}
@@ -330,15 +375,19 @@ const UserProvisioning = ({ projects, region }) => {
             
             <div className="row">
               <div className="col-md-6">
-                 {/* Groepen */}
+                 {/* Groepen (Met auto-vink feedback!) */}
                 <div className="border rounded p-3 mb-4 h-100">
-                  <label className="form-label small fw-bold mb-2 border-bottom pb-2 d-block">Te koppelen groepen:</label>
+                  <label className="form-label small fw-bold mb-2 border-bottom pb-2 d-block">
+                    {/* FIX 4: Heldermaken van welk project de groepen zijn */}
+                    Groepen uit '{projects.find(p => p.id === sourceProjectId)?.name || 'Sjabloon'}':
+                    {isAutoCheckingGroups && <span className="text-primary float-end"><span className="spinner-border spinner-border-sm me-1"></span>vinken...</span>}
+                  </label>
                   <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                     {sourceGroups.length === 0 ? (
                       <span className="text-muted small">Kies eerst een bron in stap 1.</span>
                     ) : sourceGroups.map(g => (
                       <div className="form-check" key={g.id}>
-                        <input className="form-check-input" type="checkbox" id={`group-${g.id}`} checked={selectedGroupNames.includes(g.name)} onChange={() => toggleGroupName(g.name)} disabled={isProcessing} />
+                        <input className="form-check-input" type="checkbox" id={`group-${g.id}`} checked={selectedGroupNames.includes(g.name)} onChange={() => toggleGroupName(g.name)} disabled={isProcessing || isAutoCheckingGroups} />
                         <label className="form-check-label small" htmlFor={`group-${g.id}`}>{g.name}</label>
                       </div>
                     ))}
@@ -391,9 +440,9 @@ const UserProvisioning = ({ projects, region }) => {
               
               <div className="text-center mb-4">
                 {sourceUserDetails.thumbnail ? (
-                  <img src={sourceUserDetails.thumbnail} alt="User" className="rounded-circle mb-3" style={{ width: '80px', height: '80px', objectFit: 'cover' }} />
+                  <img src={sourceUserDetails.thumbnail} alt="User" className="rounded-circle mb-3 shadow-sm border" style={{ width: '80px', height: '80px', objectFit: 'cover' }} />
                 ) : (
-                  <div className="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center text-white mb-3" style={{ width: '80px', height: '80px', fontSize: '2rem' }}>
+                  <div className="bg-secondary rounded-circle shadow-sm border d-inline-flex align-items-center justify-content-center text-white mb-3" style={{ width: '80px', height: '80px', fontSize: '2rem' }}>
                     {sourceUserDetails.firstName?.charAt(0)}{sourceUserDetails.lastName?.charAt(0)}
                   </div>
                 )}
@@ -406,6 +455,15 @@ const UserProvisioning = ({ projects, region }) => {
                   <span className="text-muted small">Status</span>
                   <span className="badge bg-success">{sourceUserDetails.status}</span>
                 </div>
+                
+                {/* FIX 1b: Toon in hoeveel recente projecten deze collega is gevonden! */}
+                {selectedInnerCircleUser && (
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted small">Gevonden in</span>
+                    <span className="badge bg-info text-dark">{selectedInnerCircleUser.foundInProjectIds.length} recente projecten</span>
+                  </div>
+                )}
+
                 <div className="d-flex justify-content-between mb-2">
                   <span className="text-muted small">Rol (in {projects.find(p=>p.id===sourceProjectId)?.name})</span>
                   <span className="fw-bold small">{sourceUserDetails.role || 'ONBEKEND'}</span>
