@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ModusIcon from '../Modus/ModusIcon';
+import ConfirmModal from '../Modus/ConfirmModal';
 import { Logger } from '../../utils/logger';
 
 const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
@@ -9,6 +10,9 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
   const [csvSeparator, setCsvSeparator] = useState(() => localStorage.getItem('trimble_csv_separator') || ',');
   const [defaultRole, setDefaultRole] = useState(() => localStorage.getItem('trimble_default_role') || 'USER');
   const [logCount, setLogCount] = useState(0);
+  
+  // State voor de nieuwe Modus Confirm Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Sla direct op in localStorage als een instelling verandert!
   useEffect(() => localStorage.setItem('trimble_send_invite', JSON.stringify(sendInvite)), [sendInvite]);
@@ -22,14 +26,15 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
     setLogCount(logs.length);
   }, []);
 
-  const handleClearLogs = () => {
-    if (window.confirm("Weet je zeker dat je alle systeemlogs wilt wissen?")) {
-      Logger.clearLogs();
-      setLogCount(0);
-      Logger.info("Systeemlogs handmatig gewist door gebruiker.");
-      if (showToast) {
-        showToast('Systeemlogs succesvol uit het geheugen gewist!', 'success');
-      }
+  // Dit is de functie die afgaat als je op "Ja, wis alle logs" klikt in de Modal
+  const executeClearLogs = () => {
+    Logger.clearLogs();
+    setLogCount(0);
+    Logger.info("Systeemlogs handmatig gewist door gebruiker.");
+    setIsModalOpen(false); // Sluit de modal direct
+    
+    if (showToast) {
+      showToast('Systeemlogs succesvol uit het geheugen gewist!', 'success');
     }
   };
 
@@ -170,9 +175,10 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
                 <ModusIcon name="download" size="16px" extraClasses="me-2" />
                 Download Logs (.txt)
               </button>
+              {/* Deze knop opent nu de Modal in plaats van de browser confirm te gebruiken */}
               <button 
                 className="btn btn-outline-danger btn-sm d-flex align-items-center justify-content-center"
-                onClick={handleClearLogs}
+                onClick={() => setIsModalOpen(true)}
                 disabled={logCount === 0}
               >
                 <ModusIcon name="trash" size="16px" extraClasses="me-2" />
@@ -182,58 +188,18 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
           </div>
         </div>
 
-        {/* INFO CARD (De Cherry On Top!) */}
+        {/* INFO CARD */}
         <div className="card shadow-sm border-0 mb-4">
           <div className="card-body p-4">
             <div className="d-flex align-items-center mb-3">
               
-              {/* Linker kant: Schild Icoon met verticale border */}
               <div className="pe-4 border-end d-flex align-items-center justify-content-center">
                 <ModusIcon name="shield-check" size="64px" extraClasses="text-primary" />
               </div>
               
-              {/* Rechter kant: App Informatie */}
               <div className="ps-4 flex-grow-1">
                 <h5 className="fw-bold text-primary mb-3" style={{ fontSize: '1.2rem' }}>Trimble Sand Box</h5>
                 
                 <ul className="list-unstyled small mb-0">
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Versie</span>
-                    <span className="fw-semibold">1.0.0</span>
-                  </li>
-                  <li className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-muted">Documentatie</span>
-                    <a href="https://github.com/Jackdemoel/modus-sandbox" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
-                      <ModusIcon name="external-link" size="16px" />
-                    </a>
-                  </li>
-                  <li className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-muted">Extensie Hub</span>
-                    <a href="https://web.connect.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Open Trimble Connect">
-                      <ModusIcon name="external-link" size="16px" />
-                    </a>
-                  </li>
-                  <li className="d-flex justify-content-between align-items-center">
-                    <span className="text-muted">Modus Framework</span>
-                    <a href="https://modus.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Modus UI Documentatie">
-                      <ModusIcon name="external-link" size="16px" />
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-            </div>
-            
-            {/* Copyright Footer */}
-            <div className="text-center mt-3 pt-3 border-top">
-              <span className="text-muted small">© 2026 MikeWayzovski</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-export default Settings;

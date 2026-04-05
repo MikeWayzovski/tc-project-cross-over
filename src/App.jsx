@@ -20,15 +20,14 @@ import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
 import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
 
-import { getProjects, cloneProject, getCloneStatus, getProjectSnapshot, downloadFileBlob, uploadFileBlob } from './api/projectsApi';
-import { getAllAccountGroups, getAllGroupsWithUsers } from './api/groupsApi';
+import { getProjects, getProjectSnapshot, downloadFileBlob, uploadFileBlob } from './api/projectsApi';
+import { getAllAccountGroups } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
-//refactor: split clone logic in App.jsx over naar services/cloneService.js, zodat App.jsx overzichtelijk blijft en de complexe kloon-logica netjes gescheiden is van de UI logica. In cloneService.js komt dan de hele executeProjectClone functie te staan, die door App.jsx wordt aangeroepen wanneer een kloon-opdracht wordt gestart. Op die manier blijft App.jsx vooral gericht op state management en UI, terwijl cloneService.js zich volledig richt op het uitvoeren van het kloonproces, inclusief het pollen van de status en het kopiëren van bestanden.
+
+// Refactor imports:
 import { executeProjectClone } from './services/cloneService';
-//refactor: maak een aparte Toast component aan in src/components/Modus/Toast.jsx, zodat de code voor het tonen van toastmeldingen netjes gescheiden is van de rest van de UI logica in App.jsx. Deze Toast component kan dan worden hergebruikt op meerdere plekken in de app als dat nodig is, en maakt App.jsx overzichtelijker door de toast-specifieke code uit te besteden.
 import { useToast } from './hooks/useToast';
 import Toast from './components/Modus/Toast';
-
 
 function App() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
@@ -53,7 +52,6 @@ function App() {
   
   const [cloningProject, setCloningProject] = useState(null);
   const { toast, showToast, hideToast } = useToast();
-  
 
   // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -213,8 +211,6 @@ function App() {
   }
   
   // --- PAGE ROUTER ---
-  // Deze functie bepaalt welke "Pagina" er gerenderd moet worden, 
-  // zodat we geen gigantische kerstboom aan && statements in onze HTML hebben.
   const renderActivePage = () => {
     switch (activePage) {
       case 'projects':
@@ -281,7 +277,6 @@ function App() {
     }
   };
 
-  
   return (
     <div className="modus-layout">
       {!isEmbedded && (
@@ -333,9 +328,29 @@ function App() {
             </div>
           )}
 
-          
+          {/* DE TOOLBAR IS TERUG: Hij moet buiten de scrollable div staan zodat hij altijd bovenin vast blijft plakken */}
+          {activePage === 'projects' && !selectedProject && !cloningProject && (
+            <ProjectToolbar 
+              viewMode={viewMode} 
+              setViewMode={setViewMode} 
+              region={region} 
+              setRegion={setRegion} 
+              searchQuery={searchQuery} 
+              setSearchQuery={setSearchQuery}
+              onRefresh={loadProjects} 
+              isEmbedded={isEmbedded} 
+            />
+          )}
 
-          {renderActivePage()}
+          {/* DE WRAPPER DIVS ZIJN TERUG: Dit zorgt voor flexbox fill en scrollbalken */}
+          <div className="modus-content-columns" style={{ flexGrow: 1, overflow: 'hidden' }}>
+            <div className="modus-content" style={{ overflowY: 'auto', height: '100%', padding: '20px' }}>
+              
+              {renderActivePage()}
+              
+            </div>
+          </div>
+
           <ModusFooter isLoading={isLoading} loadingText={loadingText} progress={progress} />
         </div>
       </div>
