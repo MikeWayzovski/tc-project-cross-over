@@ -265,7 +265,8 @@ function App() {
               <div><h3 className="mb-0">Bedrijfsbrede Groepen Audit</h3></div>
             </div>
             <div style={{ flexGrow: 1, overflowY: 'auto' }}>
-              <GroupCanvas groups={groups} isLoading={isLoading && groups.length === 0} />
+              {/* FIX: We geven nu ook 'region' door aan de Canvas! */}
+              <GroupCanvas groups={groups} isLoading={isLoading && groups.length === 0} region={region} />
             </div>
           </div>
         );
