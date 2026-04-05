@@ -203,3 +203,53 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
                 <ul className="list-unstyled small mb-0">
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Versie</span>
+                    <span className="fw-semibold">1.0.0</span>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted">Documentatie</span>
+                    <a href="https://github.com/Jackdemoel/modus-sandbox" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted">Extensie Hub</span>
+                    <a href="https://web.connect.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Open Trimble Connect">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                  <li className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted">Modus Framework</span>
+                    <a href="https://modus.trimble.com" target="_blank" rel="noreferrer" className="text-dark" title="Modus UI Documentatie">
+                      <ModusIcon name="external-link" size="16px" />
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+            
+            <div className="text-center mt-3 pt-3 border-top">
+              <span className="text-muted small">© 2026 MikeWayzovski</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* --- DE HERBRUIKBARE CONFIRM MODAL --- */}
+      <ConfirmModal 
+        isOpen={isModalOpen}
+        title="Weet je het zeker?"
+        message="Je staat op het punt alle technische systeemlogs te wissen. Deze actie kan niet ongedaan worden gemaakt."
+        confirmText="Ja, wis alle logs"
+        cancelText="Annuleren"
+        variant="danger" 
+        onConfirm={executeClearLogs}
+        onCancel={() => setIsModalOpen(false)}
+      />
+
+    </div>
+  );
+};
+
+export default Settings;
