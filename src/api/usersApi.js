@@ -28,19 +28,6 @@ export const getMyProjectRole = async (token, regionName, projectId) => {
   }
 };
 
-export const getProjectUsers = async (token, regionName, projectId) => {
-  const baseUrl = getBaseUrlForRegion(regionName);
-  try {
-    const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}/users`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-    });
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (error) {
-    Logger.error(`Fout bij ophalen gebruikers van project ${projectId}`, error.message);
-    return [];
-  }
-};
 
 export const getUserByEmail = async (token, regionName, projectId, email) => {
   const users = await getProjectUsers(token, regionName, projectId);
@@ -71,4 +58,46 @@ export const addUserToProject = async (token, regionName, projectId, email, role
     Logger.error(`Kritieke fout bij toevoegen gebruiker aan project ${projectId}`, error.message);
     return null;
   }
+};
+
+export const getProjectUsers = async (token, region, projectId) => {
+  const baseUrl = getBaseUrlForRegion(region);
+  const url = `${baseUrl}/tc/api/2.0/projects/${projectId}/users`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    Logger.error(`Fout bij ophalen projectgebruikers (${response.status}): ${errorText}`);
+    return [];
+  }
+
+  return await response.json();
+};
+
+export const getUserDetails = async (token, region, userId) => {
+  const baseUrl = getBaseUrlForRegion(region);
+  const url = `${baseUrl}/tc/api/2.0/users/${userId}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    Logger.error(`Fout bij ophalen details voor gebruiker ${userId} (${response.status}): ${errorText}`);
+    return null;
+  }
+
+  return await response.json();
 };
