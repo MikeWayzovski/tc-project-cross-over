@@ -198,16 +198,16 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
               </div>
               
               <div className="ps-4 flex-grow-1">
-                <h5 className="fw-bold text-primary mb-3" style={{ fontSize: '1.2rem' }}>Trimble Sand Box</h5>
+                <h5 className="fw-bold text-primary mb-3" style={{ fontSize: '1.2rem' }}>TC Cross Over</h5>
                 
                 <ul className="list-unstyled small mb-0">
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Versie</span>
-                    <span className="fw-semibold">1.0.0</span>
+                    <span className="fw-semibold">1.2.0</span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Documentatie</span>
-                    <a href="https://github.com/Jackdemoel/modus-sandbox" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
+                    <a href="https://github.com/MikeWayzovski/tc-project-cross-over/blob/main/README.md" target="_blank" rel="noreferrer" className="text-dark" title="Ga naar Documentatie">
                       <ModusIcon name="external-link" size="16px" />
                     </a>
                   </li>

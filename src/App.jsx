@@ -411,7 +411,7 @@ function App() {
               <ModusIconButton icon="menu" onClick={toggleSidebar} ariaLabel="Menu" extraClasses="text-white me-3" />
               <a className="navbar-brand d-flex align-items-center text-white m-0" href="/">
                 <img src={trimbleLogo} alt="Trimble Logo" height="28" className="me-2" />
-                <span style={{ fontSize: '1.25rem', fontWeight: '600' }}>Trimble Sand Box</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: '600' }}>TC Cross Over</span>
               </a>
             </div>
           </div>

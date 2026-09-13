@@ -32,7 +32,7 @@ export const useWorkspaceApi = () => {
         setWorkspaceApi(api);
 
         const mainMenuObject = {
-          title: "Trimble Sand Box",
+          title: "TC Cross Over",
           icon: `${window.location.origin}/mijn-logo.svg`,
           command: "SANDBOX_MAIN_MENU"
         };

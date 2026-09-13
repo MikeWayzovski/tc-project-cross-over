@@ -1,10 +1,10 @@
-# Trimble Sand Box (Workspace Manager)
+# TC Cross Over (Workspace Manager)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react)
 ![Trimble Modus](https://img.shields.io/badge/Trimble-Modus_UI-005F9E.svg)
 
-**Trimble Sand Box** is a custom, powerful extension built for Trimble Connect. It serves as a comprehensive workspace manager, allowing project administrators to easily oversee multiple projects, provision users, and audit corporate groups across different global server regions.
+**TC Cross Over** is a custom, powerful extension built for Trimble Connect. It serves as a comprehensive workspace manager, allowing project administrators to easily oversee multiple projects, provision users, and audit corporate groups across different global server regions.
 
 The application can run as a standalone web app using Trimble ID OAuth2, or seamlessly embedded inside Trimble Connect Web utilizing the official Trimble Connect Workspace API.
 
@@ -14,6 +14,8 @@ The application can run as a standalone web app using Trimble ID OAuth2, or seam
 * **👥 Advanced User Provisioning:** Invite new users to projects in bulk, automatically assign standard roles, and automatically provision missing groups.
 * **🏢 Corporate Group Auditing:** Map out and visualize group structures and user memberships across hundreds of projects simultaneously.
 * **📊 CSV Export:** Export live group and user data to a CSV file for compliance, billing, or auditing purposes.
+* **📦 Project Download:** Inspect a project's folder structure, pick exactly which folders to include, and download the selection as a single zip with live progress and a cancel control.
+* **⭐ Session Favorites:** Pin the projects you are working on to the top of the grid and list for the current session.
 * **⚙️ Customizable Settings:** Toggle Dark Mode, configure default onboarding behaviors, choose CSV separators (for Excel compatibility), and manage internal system logs.
 * **🔌 Seamless Integration:** Features a responsive, native-feeling UI built with the Trimble Modus framework, perfectly embedding into the Trimble Connect left-panel menu.
 
@@ -29,7 +31,7 @@ To use this application as an integrated tool inside Trimble Connect, you need t
    https://modus-sandbox.vercel.app/manifest.json
 Click Add or Submit.
 
-Ensure the toggle switch next to "Trimble Sand Box" is set to ON.
+Ensure the toggle switch next to "TC Cross Over" is set to ON.
 
 Refresh the page. You will now see the application in the left navigation panel (look for the graduation cap icon).
 
@@ -50,4 +52,4 @@ API Integration: trimble-connect-project-workspace-api
 
 Hosting: Vercel
 
-Developed as a robust sandbox and management tool for Trimble Connect workflows.
+Developed as a robust cross-project management tool for Trimble Connect workflows.
