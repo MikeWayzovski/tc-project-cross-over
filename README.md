@@ -28,7 +28,7 @@ To use this application as an integrated tool inside Trimble Connect, you need t
 3. Click on the button to add a new extension.
 4. Paste the following **Extension Manifest URL**:
    ```text
-   https://modus-sandbox.vercel.app/manifest.json
+   https://tc-project-cross-over.vercel.app/manifest.json
 Click Add or Submit.
 
 Ensure the toggle switch next to "TC Cross Over" is set to ON.
@@ -37,7 +37,7 @@ Refresh the page. You will now see the application in the left navigation panel 
 
 💻 Standalone Usage
 If you prefer to run the application outside of the Trimble Connect iframe, simply visit the application URL directly:
-👉 https://modus-sandbox.vercel.app
+👉 https://tc-project-cross-over.vercel.app
 
 Note: When running standalone, you will be prompted to log in using your Trimble ID credentials.
 
