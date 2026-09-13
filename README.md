@@ -1,4 +1,4 @@
-# Trimble Sand Box (Workspace Manager)
+# TC Cross over (Workspace Manager)
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react)
