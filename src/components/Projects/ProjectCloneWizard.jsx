@@ -7,23 +7,24 @@ import ConfirmModal from '../Modus/ConfirmModal';
 
 
 // --- HULP COMPONENT: Bestand Icoontjes Bepalen ---
+// De namen hieronder moeten bestaan als modus-icon-<naam>-duotone, anders blijft het vakje leeg.
 const getFileIcon = (filename) => {
-  if (!filename.includes('.')) return { name: 'document', color: 'text-secondary' };
+  if (!filename.includes('.')) return { name: 'file-text', color: 'text-secondary' };
   
   const ext = filename.split('.').pop().toLowerCase();
   switch (ext) {
     case 'pdf': 
-      return { name: 'document', color: 'text-danger' };
+      return { name: 'file-text', color: 'text-danger' };
     case 'xls': case 'xlsx': case 'csv': 
       return { name: 'table', color: 'text-success' };
     case 'ifc': case 'skp': case 'rvt': case 'dwg': case 'dxf': case 'trb': 
-      return { name: 'box', color: 'text-info' };
+      return { name: 'cube', color: 'text-info' };
     case 'doc': case 'docx': 
-      return { name: 'document', color: 'text-primary' };
+      return { name: 'file-text', color: 'text-primary' };
     case 'jpg': case 'jpeg': case 'png': case 'bmp': 
       return { name: 'image', color: 'text-warning' };
     default: 
-      return { name: 'document', color: 'text-secondary' };
+      return { name: 'file-text', color: 'text-secondary' };
   }
 };
 

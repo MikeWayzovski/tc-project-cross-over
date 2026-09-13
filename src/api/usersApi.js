@@ -29,16 +29,18 @@ export const getUserPreferences = async (token) => {
 
 export const getMyProjectRole = async (token, regionName, projectId) => {
   const baseUrl = getBaseUrlForRegion(regionName);
-  try {
-    const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}/users/me`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-    });
-    if (!response.ok) throw new Error("Fout bij ophalen eigen project rol");
-    return await response.json();
-  } catch (error) {
-    Logger.error(`Fout bij ophalen rol in project ${projectId}`, error.message);
-    return null;
+
+  const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}/users/me`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+  });
+
+  // Stil terugvallen op null liet elke beheerder als gewoon lid zien.
+  if (!response.ok) {
+    Logger.error(`Fout bij ophalen rol in project ${projectId} (${response.status})`);
+    throw new Error(`Rol in dit project kon niet worden opgehaald (status ${response.status}).`);
   }
+
+  return await response.json();
 };
 
 

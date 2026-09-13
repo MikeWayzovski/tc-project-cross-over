@@ -22,17 +22,19 @@ export const getProjects = async (token, regionName) => {
 
 export const getProjectDetails = async (token, regionName, projectId) => {
   const baseUrl = getBaseUrlForRegion(regionName);
-  try {
-    // HET FIXJE: /tc/api/2.0 staat er weer netjes in!
-    const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}?fullyLoaded=true`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-    });
-    if (!response.ok) throw new Error("Fout bij ophalen project details");
-    return await response.json();
-  } catch (error) {
-    Logger.error(`Fout bij ophalen details voor project ${projectId}`, error.message);
-    return null;
+
+  const response = await fetch(`${baseUrl}/tc/api/2.0/projects/${projectId}?fullyLoaded=true`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+  });
+
+  // Bewust geen stille null: de detailpagina liet dan lege nullen zien zonder uitleg.
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    Logger.error(`Fout bij ophalen details voor project ${projectId} (${response.status}): ${body}`);
+    throw new Error(`Trimble gaf status ${response.status} terug bij het ophalen van dit project.`);
   }
+
+  return await response.json();
 };
 
 export const cloneProject = async (token, region, cloneData) => {

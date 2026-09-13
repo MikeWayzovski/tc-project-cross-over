@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
 
@@ -19,13 +19,15 @@ import ProjectGrid from './components/Projects/ProjectGrid';
 import ProjectList from './components/Projects/ProjectList';
 import ProjectDetails from './components/Projects/ProjectDetails';
 import ProjectCloneWizard from './components/Projects/ProjectCloneWizard'; 
+import ProjectDownloadModal from './components/Projects/ProjectDownloadModal';
 
-import { getProjects, getProjectSnapshot, downloadFileBlob, uploadFileBlob } from './api/projectsApi';
+import { getProjects } from './api/projectsApi';
 import { getAllAccountGroups } from './api/groupsApi';
 import Settings from './components/Settings/Settings';
 
 // Refactor imports:
 import { executeProjectClone } from './services/cloneService';
+import { inspectProjectStructure, downloadProjectAsZip } from './services/downloadService';
 import { useToast } from './hooks/useToast';
 import Toast from './components/Modus/Toast';
 
@@ -53,12 +55,121 @@ function App() {
   const [cloningProject, setCloningProject] = useState(null);
   const { toast, showToast, hideToast } = useToast();
 
+  // Favorieten leven alleen in deze sessie: geen opslag, weg na een refresh.
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
+
+  const [downloadProject, setDownloadProject] = useState(null);
+  const [downloadPlan, setDownloadPlan] = useState(null);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadStep, setDownloadStep] = useState('');
+
+  // Een ref en geen state: de downloadlus leest dit tussen twee bestanden door
+  // en mag niet op een re-render wachten.
+  const cancelDownloadRef = useRef(false);
+
   // -- LOGICA & FUNCTIES --
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const openProject = (project) => {
     setSelectedProject(project);
     setCloningProject(null); 
+  };
+
+  const toggleFavorite = (projectId) => {
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  };
+
+  // Stap 1: mappenstructuur inlezen zodat de gebruiker weet waar hij ja tegen zegt.
+  const inspectForDownload = async (project) => {
+    setDownloadProject(project);
+    setDownloadPlan(null);
+    setDownloadError(null);
+    setIsInspecting(true);
+
+    try {
+      const token = await getValidToken();
+      setDownloadPlan(await inspectProjectStructure(token, region, project.id));
+    } catch (error) {
+      Logger.error('Fout bij inlezen mappenstructuur:', error.message || error);
+      setDownloadError(error.message || 'Onbekende fout.');
+    } finally {
+      setIsInspecting(false);
+    }
+  };
+
+  const closeDownloadModal = () => {
+    setDownloadProject(null);
+    setDownloadPlan(null);
+    setDownloadError(null);
+    setIsInspecting(false);
+    setIsDownloading(false);
+    setDownloadProgress(0);
+    setDownloadStep('');
+  };
+
+  const abortDownload = () => {
+    cancelDownloadRef.current = true;
+    setDownloadStep('Afbreken na het huidige bestand...');
+  };
+
+  // Stap 2: pas na bevestiging halen we de gekozen bestanden op en bouwen we de zip.
+  const startDownload = async (selectedFiles) => {
+    const project = downloadProject;
+
+    cancelDownloadRef.current = false;
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadStep(`Download van ${project.name} voorbereiden...`);
+
+    setIsLoading(true);
+    setLoadingText(`Download van ${project.name} voorbereiden...`);
+    setProgress(0);
+
+    try {
+      const token = await getValidToken();
+      const result = await downloadProjectAsZip({
+        token,
+        region,
+        projectName: project.name,
+        files: selectedFiles,
+        shouldCancel: () => cancelDownloadRef.current,
+        onProgress: (percent, text) => {
+          setDownloadProgress(percent);
+          setProgress(percent);
+          // Tijdens het afbreken laten we die melding staan in plaats van het volgende bestand.
+          if (!cancelDownloadRef.current) setDownloadStep(text);
+          setLoadingText(text);
+        },
+      });
+
+      if (result.cancelled) {
+        showToast(`Download afgebroken na ${result.downloaded} bestanden. Er is geen zip gemaakt.`, 'warning');
+      } else if (result.failed.length > 0) {
+        showToast(
+          `${result.downloaded} bestanden gedownload, ${result.failed.length} mislukt. Zie _niet-gedownload.txt in de zip.`,
+          'warning',
+        );
+      } else {
+        showToast(`${result.downloaded} bestanden gedownload als zip.`, 'success');
+      }
+    } catch (error) {
+      Logger.error('Fout tijdens downloaden project:', error.message || error);
+      showToast(`Downloaden mislukt: ${error.message}`, 'danger');
+    } finally {
+      cancelDownloadRef.current = false;
+      closeDownloadModal();
+      setIsLoading(false);
+      setLoadingText('');
+      setTimeout(() => setProgress(null), 1000);
+    }
   };
 
   const handleCloneSubmit = async (cloneData) => {
@@ -241,15 +352,21 @@ function App() {
               <ProjectGrid 
                 projects={projects} 
                 searchQuery={searchQuery} 
+                favoriteIds={favoriteIds}
                 onProjectClick={openProject} 
                 onCloneClick={(p) => setCloningProject(p)} 
+                onToggleFavorite={toggleFavorite}
+                onDownloadClick={inspectForDownload}
               />
             ) : (
               <ProjectList 
                 projects={projects} 
                 searchQuery={searchQuery} 
+                favoriteIds={favoriteIds}
                 onProjectClick={openProject} 
                 onCloneClick={(p) => setCloningProject(p)} 
+                onToggleFavorite={toggleFavorite}
+                onDownloadClick={inspectForDownload}
               />
             )}
           </>
@@ -363,6 +480,22 @@ function App() {
         </div>
       </div>
       
+      {/* PROJECT DOWNLOAD: eerst structuur tonen, daarna pas ophalen.
+          Afwezig renderen wist de mapselectie voor het volgende project. */}
+      {downloadProject && <ProjectDownloadModal
+        project={downloadProject}
+        isInspecting={isInspecting}
+        plan={downloadPlan}
+        error={downloadError}
+        isDownloading={isDownloading}
+        progress={downloadProgress}
+        progressText={downloadStep}
+        onConfirm={startDownload}
+        onRetry={() => inspectForDownload(downloadProject)}
+        onAbort={abortDownload}
+        onCancel={closeDownloadModal}
+      />}
+
       {/* ZWEVENDE TOAST NOTIFICATIE */}
       <Toast toast={toast} onClose={hideToast} />
     </div>
