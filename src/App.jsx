@@ -272,7 +272,7 @@ function App() {
 
         try {
           const token = await getValidToken();
-          const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p));
+          const allGroups = await getAllAccountGroups(token, region, (p) => setProgress(p), projects);
           setGroups(allGroups);
         } catch (error) {
           Logger.error("Fout bij ophalen bedrijfsbrede groepen:", error);
@@ -412,7 +412,7 @@ function App() {
         return (
           <div className="d-flex flex-column h-100">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <div><h3 className="mb-0">Bedrijfsbrede Groepen Audit</h3></div>
+              <div><h3 className="mb-0">Bedrijfsbrede groepen-audit</h3></div>
             </div>
             <div style={{ flexGrow: 1, overflowY: 'auto' }}>
               {/* FIX: We geven nu ook 'region' door aan de Canvas! */}

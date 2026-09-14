@@ -1,5 +1,16 @@
 import { getBaseUrlForRegion } from './config';
 import { Logger } from '../utils/logger';
+import { getProjects } from './projectsApi';
+
+const asList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
+const projectLabel = (project) =>
+  project?.name || project?.title || project?.nm || 'Naamloos project';
 
 export const getProjectGroups = async (token, regionName, projectId) => {
   const baseUrl = getBaseUrlForRegion(regionName);
@@ -90,14 +101,16 @@ export const removeUserFromGroup = async (token, regionName, groupId, userId) =>
   }
 };
 
-export const getAllAccountGroups = async (token, regionName, onProgress) => {
+export const getAllAccountGroups = async (token, regionName, onProgress, knownProjects = []) => {
   const baseUrl = getBaseUrlForRegion(regionName);
   const config = { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } };
 
   try {
-    const res = await fetch(`${baseUrl}/tc/api/2.1/projects?minimal=true`, config);
-    const data = await res.json();
-    const projects = Array.isArray(data) ? data : (data.items || []);
+    // De 2.1-minimal lijst levert vaak geen naam; gebruik de 2.0-projecten (of de al geladen lijst).
+    let projects = asList(knownProjects).filter((project) => project?.id);
+    if (projects.length === 0) {
+      projects = asList(await getProjects(token, regionName)).filter((project) => project?.id);
+    }
 
     const allGroups = [];
     const concurrencyLimit = 5; 
@@ -109,10 +122,15 @@ export const getAllAccountGroups = async (token, regionName, onProgress) => {
         try {
           const groupRes = await fetch(`${baseUrl}/tc/api/2.0/groups?projectId=${project.id}`, config);
           if (groupRes.ok) {
-            const groups = await groupRes.json();
-            return groups.map(g => ({ ...g, projectName: project.name }));
+            const groups = asList(await groupRes.json());
+            const name = projectLabel(project);
+            return groups.map((group) => ({
+              ...group,
+              projectId: project.id,
+              projectName: name,
+            }));
           }
-        } catch (e) { 
+        } catch { 
           Logger.warn(`Kon groepen voor project ${project.id} niet ophalen.`); 
         }
         return [];
