@@ -5,6 +5,7 @@ import { getProjectGroups, createProjectGroup, addUserToGroup, removeUserFromGro
 import { addUserToProject, getUserByEmail, getProjectUsers, getUserDetails } from '../../api/usersApi';
 import { Logger } from '../../utils/logger';
 import ConfirmModal from '../Modus/ConfirmModal';
+import { readStoredToken } from '../../utils/accessToken';
 
 const UserProvisioning = ({ projects, region, showToast }) => {
   const { getAccessTokenSilently } = useAuth();
@@ -42,7 +43,8 @@ const UserProvisioning = ({ projects, region, showToast }) => {
       setIsLoadingInnerCircle(true);
       
       try {
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         
         // Sorteer op laatst bezocht/gewijzigd en pak de top 5
         const recentProjects = [...projects].sort((a, b) => {
@@ -100,7 +102,8 @@ const UserProvisioning = ({ projects, region, showToast }) => {
         return;
       }
       try {
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         const groups = await getProjectGroups(token, region, sourceProjectId);
         setSourceGroups(groups || []);
         // Reset groep-selectie totdat de auto-checker het overneemt
@@ -123,7 +126,8 @@ const UserProvisioning = ({ projects, region, showToast }) => {
       
       setIsAutoCheckingGroups(true);
       try {
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         const autoSelectedGroups = [];
 
         for (const group of sourceGroups) {
@@ -154,7 +158,8 @@ const UserProvisioning = ({ projects, region, showToast }) => {
         return;
       }
       try {
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         const details = await getUserDetails(token, region, sourceProjectId, selectedSourceUserId);
         setSourceUserDetails(details);
       } catch (error) {
@@ -195,7 +200,8 @@ const UserProvisioning = ({ projects, region, showToast }) => {
     Logger.info(`Start onboarding sync voor ${email}...`);
 
     try {
-      const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+      const token = await readStoredToken(getAccessTokenSilently);
+      if (!token) throw new Error('Geen geldig token beschikbaar.');
 
       for (const projectId of targetProjectIds) {
         const projName = projects.find(p => p.id === projectId)?.name || projectId;

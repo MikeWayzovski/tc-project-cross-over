@@ -16,16 +16,29 @@ import './index.css'
 import { TIDProvider } from '@trimble-oss/trimble-id-react'
 import tidClient from './api/client.ts'
 
-// Optionele redirect handler (stuurt je terug naar de homepagina na inloggen)
-const handleRedirect = (authState) => {
-  window.history.replaceState({}, document.title, authState?.returnTo || '/');
+const stripAuthParams = (target = '/') => {
+  window.history.replaceState({}, document.title, target);
 };
 
+// Na PKCE-exchange: querystring opruimen en terug naar de app (niet op /callback blijven).
+const handleRedirect = (authState) => {
+  const returnTo = authState?.returnTo;
+  const next = !returnTo || returnTo.startsWith('/callback') || returnTo.startsWith('/logout-callback')
+    ? '/'
+    : returnTo;
+  stripAuthParams(next);
+};
+
+if (window.location.pathname.replace(/\/$/, '') === '/logout-callback') {
+  stripAuthParams('/');
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    {/* 3. Wikkel de App in de TIDProvider */}
-    <TIDProvider tidClient={tidClient} onRedirectCallback={handleRedirect}>
-      <App />
-    </TIDProvider>
-  </React.StrictMode>,
+  <TIDProvider
+    tidClient={tidClient}
+    onRedirectCallback={handleRedirect}
+    checkRedirectUrlMatch={true}
+  >
+    <App />
+  </TIDProvider>,
 )

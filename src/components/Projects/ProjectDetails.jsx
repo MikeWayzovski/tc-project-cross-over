@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@trimble-oss/trimble-id-react';
 import ModusIcon from '../Modus/ModusIcon';
 import AuthImage from '../Shared/AuthImage';
 import { getProjectDetails } from '../../api/projectsApi';
 import { getProjectGroups } from '../../api/groupsApi';
 import { getMyProjectRole, getProjectUsers } from '../../api/usersApi';
 import { Logger } from '../../utils/logger';
+import { isTokenUnavailable } from '../../utils/accessToken';
 
 // Helper om bytes om te rekenen naar MB/GB
 const formatBytes = (bytes, decimals = 2) => {
@@ -27,9 +27,7 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('nl-NL');
 };
 
-const ProjectDetails = ({ project, region, onBack }) => {
-  const { getAccessTokenSilently } = useAuth();
-
+const ProjectDetails = ({ project, region, getValidToken, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [details, setDetails] = useState(null);
@@ -45,7 +43,7 @@ const ProjectDetails = ({ project, region, onBack }) => {
     setSideLoadFailed(false);
 
     try {
-      const token = await getAccessTokenSilently();
+      const token = await getValidToken();
 
       // De kerngegevens bepalen of de pagina zinvol is; de rest mag stilletjes falen.
       const [detailsResult, roleResult, usersResult, groupsResult] = await Promise.allSettled([
@@ -69,11 +67,15 @@ const ProjectDetails = ({ project, region, onBack }) => {
     } catch (err) {
       Logger.error('Fout tijdens laden project details', err.message || err);
       setDetails(null);
-      setError(err.message || 'Onbekende fout bij het ophalen van dit project.');
+      setError(
+        isTokenUnavailable(err)
+          ? 'Log in om de projectinformatie te bekijken.'
+          : err.message || 'Onbekende fout bij het ophalen van dit project.',
+      );
     } finally {
       setLoading(false);
     }
-  }, [project.id, region, getAccessTokenSilently]);
+  }, [project.id, region, getValidToken]);
 
   useEffect(() => {
     loadProjectData();

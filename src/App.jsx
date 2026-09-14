@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react'; 
 import trimbleLogo from './assets/trimble.svg';
 
@@ -30,9 +30,12 @@ import { executeProjectClone } from './services/cloneService';
 import { inspectProjectStructure, downloadProjectAsZip } from './services/downloadService';
 import { useToast } from './hooks/useToast';
 import Toast from './components/Modus/Toast';
+import LoginScreen from './components/Auth/LoginScreen';
+import { isTidConfigured } from './api/client.ts';
+import { resolveAccessToken, isTokenUnavailable } from './utils/accessToken';
 
 function App() {
-  const { isAuthenticated, getAccessTokenSilently } = useAuth(); 
+  const { isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently, loginWithRedirect, error: authError } = useAuth(); 
   const { isEmbedded, workspaceApi, embeddedToken, embeddedProject } = useWorkspaceApi();
   
   // -- STATE MANAGEMENT --
@@ -99,7 +102,12 @@ function App() {
       setDownloadPlan(await inspectProjectStructure(token, region, project.id));
     } catch (error) {
       Logger.error('Fout bij inlezen mappenstructuur:', error.message || error);
-      setDownloadError(error.message || 'Onbekende fout.');
+      if (isTokenUnavailable(error)) {
+        showToast('Log in om dit project te downloaden.', 'warning');
+        closeDownloadModal();
+      } else {
+        setDownloadError(error.message || 'Onbekende fout.');
+      }
     } finally {
       setIsInspecting(false);
     }
@@ -162,7 +170,11 @@ function App() {
       }
     } catch (error) {
       Logger.error('Fout tijdens downloaden project:', error.message || error);
-      showToast(`Downloaden mislukt: ${error.message}`, 'danger');
+      if (isTokenUnavailable(error)) {
+        showToast('Log in om dit project te downloaden.', 'warning');
+      } else {
+        showToast(`Downloaden mislukt: ${error.message}`, 'danger');
+      }
     } finally {
       cancelDownloadRef.current = false;
       closeDownloadModal();
@@ -202,7 +214,11 @@ function App() {
     } catch (error) {
       setIsLoading(false);
       setLoadingText('');
-      showToast(error.message, 'danger');
+      if (isTokenUnavailable(error)) {
+        showToast('Log in om dit project te klonen.', 'warning');
+      } else {
+        showToast(error.message, 'danger');
+      }
     }
   };
 
@@ -227,19 +243,22 @@ function App() {
   }, [embeddedProject]);
 
 
-  const getValidToken = async () => {
-    let token = null;
-    if (isEmbedded && embeddedToken) {
-      token = embeddedToken;
-    } else if (isAuthenticated) {
-      token = await getAccessTokenSilently();
-    }
-    
-    if (token) {
-      window.trimbleSandboxToken = token; 
-      return token;
-    }
-    throw new Error("Geen geldig token beschikbaar.");
+  const getValidToken = useCallback(
+    () =>
+      resolveAccessToken({
+        isAuthenticated,
+        getAccessTokenSilently,
+        isEmbedded,
+        embeddedToken,
+        workspaceApi,
+      }),
+    [isAuthenticated, getAccessTokenSilently, isEmbedded, embeddedToken, workspaceApi],
+  );
+
+  const promptLogin = (error) => {
+    if (!isTokenUnavailable(error)) return false;
+    showToast('Log in om verder te gaan.', 'warning');
+    return true;
   };
 
   useEffect(() => {
@@ -257,6 +276,7 @@ function App() {
           setGroups(allGroups);
         } catch (error) {
           Logger.error("Fout bij ophalen bedrijfsbrede groepen:", error);
+          promptLogin(error);
         } finally {
           setIsLoading(false);
           setLoadingText("");
@@ -311,6 +331,7 @@ function App() {
       }
     } catch (error) {
       Logger.error("Fout bij ophalen projecten:", error);
+      promptLogin(error);
     } finally {
       setIsLoading(false);
       setLoadingText('');
@@ -323,9 +344,20 @@ function App() {
     }
   }, [isAuthenticated, embeddedToken, isEmbedded, region, activePage, embeddedProject]);
 
-  const hasAccess = isAuthenticated || (isEmbedded && embeddedToken);
-  if (!hasAccess && !isEmbedded) {
-    return <div className="p-5 text-center">Wachten op authenticatie...</div>;
+  const hasAccess = isAuthenticated || (isEmbedded && Boolean(embeddedToken));
+  const callbackPath = window.location.pathname.replace(/\/$/, '') || '/';
+  const isAuthCallback = callbackPath === '/callback' && Boolean(new URLSearchParams(window.location.search).get('code'));
+
+  if (!isEmbedded && (isAuthLoading || isAuthCallback || !hasAccess)) {
+    return (
+      <LoginScreen
+        isLoading={isAuthLoading}
+        isCallback={isAuthCallback && !isAuthenticated}
+        isConfigured={isTidConfigured}
+        error={authError?.message}
+        onLogin={() => loginWithRedirect()}
+      />
+    );
   }
   
   // --- PAGE ROUTER ---
@@ -346,6 +378,7 @@ function App() {
               <ProjectDetails 
                 project={selectedProject} 
                 region={region} 
+                getValidToken={getValidToken}
                 onBack={() => setSelectedProject(null)} 
               />
             ) : viewMode === 'grid' ? (
@@ -413,6 +446,9 @@ function App() {
                 <img src={trimbleLogo} alt="Trimble Logo" height="28" className="me-2" />
                 <span style={{ fontSize: '1.25rem', fontWeight: '600' }}>TC Cross Over</span>
               </a>
+            </div>
+            <div className="ms-auto">
+              <UserMenu />
             </div>
           </div>
         </nav>

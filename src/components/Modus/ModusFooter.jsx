@@ -49,7 +49,7 @@ const ModusFooter = ({ isLoading, loadingText, progress }) => {
 
       {/* BLOK 3: Extra info aan de rechterkant (bijv. versiebeheer of copyright) */}
       <div className="ms-auto text-muted">
-        <span>TC Cross Over v1.2.0</span>
+        <span>TC Cross Over v1.3.0</span>
       </div>
 
     </div>

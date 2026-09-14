@@ -3,6 +3,7 @@ import { useAuth } from '@trimble-oss/trimble-id-react';
 import ModusIcon from '../Modus/ModusIcon';
 import { getGroupUsers } from '../../api/groupsApi';
 import { Logger } from '../../utils/logger';
+import { readStoredToken } from '../../utils/accessToken';
 
 const GroupCanvas = ({ groups, isLoading, region }) => {
   const { getAccessTokenSilently } = useAuth();
@@ -31,7 +32,8 @@ const GroupCanvas = ({ groups, isLoading, region }) => {
     if (!isExpanded && !groupMembers[groupId]) {
       setLoadingMembers(prev => ({ ...prev, [groupId]: true }));
       try {
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         const users = await getGroupUsers(token, region, groupId);
         
         // Sorteer de gevonden leden netjes op voornaam (A-Z)

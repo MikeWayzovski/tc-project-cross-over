@@ -1,6 +1,6 @@
 # TC Cross Over (Workspace Manager)
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react)
 ![Trimble Modus](https://img.shields.io/badge/Trimble-Modus_UI-005F9E.svg)
 

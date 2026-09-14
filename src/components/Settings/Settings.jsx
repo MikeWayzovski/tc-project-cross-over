@@ -203,7 +203,7 @@ const Settings = ({ isDarkMode, setIsDarkMode, showToast }) => {
                 <ul className="list-unstyled small mb-0">
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Versie</span>
-                    <span className="fw-semibold">1.2.0</span>
+                    <span className="fw-semibold">1.3.0</span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center mb-2">
                     <span className="text-muted">Documentatie</span>

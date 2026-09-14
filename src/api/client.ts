@@ -2,10 +2,20 @@ import { TIDClient } from '@trimble-oss/trimble-id-react';
 
 const configurationEndpoint = import.meta.env.VITE_CONFIGURATION_ENDPOINT;
 const clientId = import.meta.env.VITE_CLIENT_ID;
-const scopes = [import.meta.env.VITE_SCOPES].filter(Boolean);
+
+const envScopes = String(import.meta.env.VITE_SCOPES || '')
+    .split(/[,\s]+/)
+    .filter(Boolean);
+
+// openid is verplicht voor de id_token die de SDK decodeert na de PKCE-exchange.
+const scopes = envScopes.includes('openid') ? envScopes : ['openid', ...envScopes];
 
 /** Trimble ID is alleen nodig voor de standalone app, niet in de Trimble Connect iframe. */
 export const isTidConfigured = Boolean(configurationEndpoint && clientId);
+
+const origin = window.location.origin;
+const redirectUrl = import.meta.env.VITE_REDIRECT_URL || `${origin}/callback`;
+const logoutRedirectUrl = import.meta.env.VITE_LOGOUT_REDIRECT_URL || `${origin}/logout-callback`;
 
 if (!isTidConfigured) {
     console.error(
@@ -24,11 +34,8 @@ const tidClient = new TIDClient({
     config: {
         configurationEndpoint: configurationEndpoint || 'https://tid-not-configured.invalid/.well-known/openid-configuration',
         clientId: clientId || 'tid-not-configured',
-
-        // Dynamische URL's: werkt nu feilloos op zowel localhost als Vercel!
-        redirectUrl: `${window.location.origin}/callback`,
-        logoutRedirectUrl: `${window.location.origin}/logout-callback`,
-
+        redirectUrl,
+        logoutRedirectUrl,
         scopes,
     }
 });

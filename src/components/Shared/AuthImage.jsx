@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react';
+import { readStoredToken } from '../../utils/accessToken';
 
 export default function AuthImage({ src, className = "", style = {}, alt = "Afbeelding", fallbackNode = null }) {
   const { getAccessTokenSilently } = useAuth();
@@ -21,8 +22,8 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
 
     const loadImage = async () => {
       try {
-        // HIER ZIT DE FIX: Pak het globale Trimble token als we in een iframe zitten!
-        const token = window.trimbleSandboxToken || await getAccessTokenSilently();
+        const token = await readStoredToken(getAccessTokenSilently);
+        if (!token) throw new Error('Geen geldig token beschikbaar.');
         
         const fetchUrl = src.startsWith('http') ? src : `https://app.connect.trimble.com${src}`;
         
@@ -37,7 +38,7 @@ export default function AuthImage({ src, className = "", style = {}, alt = "Afbe
           const objectUrl = URL.createObjectURL(blob);
           setBlobUrl(objectUrl);
         }
-      } catch (e) {
+      } catch {
         if (isMounted) setBlobUrl(null); 
       }
     };

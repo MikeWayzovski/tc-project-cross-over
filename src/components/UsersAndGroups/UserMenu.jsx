@@ -18,6 +18,7 @@ const UserMenu = () => {
         try {
           // 1. Haal de token op [cite: 1581, 1583]
           const token = await getAccessTokenSilently();
+          if (!token) return;
           
           // 2. Roep de Trimble Connect API aan [cite: 4544, 4549]
           const response = await fetch('https://app.connect.trimble.com/tc/api/2.0/users/me', {
