@@ -3,6 +3,7 @@ import { useAuth } from '@trimble-oss/trimble-id-react';
 import ModusIconButton from '../Modus/ModusIconButton';
 import ModusIcon from '../Modus/ModusIcon';
 import AuthImage from '../Shared/AuthImage';
+import CopyableText from '../Modus/CopyableText';
 
 const UserMenu = () => {
   // Haal de benodigde functies uit de Trimble ID SDK [cite: 1550, 1557, 1568, 1581]
@@ -91,8 +92,18 @@ const UserMenu = () => {
               />
             </div>
           )}
-          <div className="fw-bold">{connectUser?.firstName} {connectUser?.lastName}</div>
-          <div className="text-muted small">{connectUser?.email}</div>
+          <div className="fw-bold">
+            <CopyableText
+              value={`${connectUser?.firstName || ''} ${connectUser?.lastName || ''}`.trim()}
+              buttonAriaLabel={`Kopieer naam ${connectUser?.firstName} ${connectUser?.lastName}`}
+            />
+          </div>
+          <div className="text-muted small">
+            <CopyableText
+              value={connectUser?.email}
+              buttonAriaLabel={`Kopieer e-mail ${connectUser?.email}`}
+            />
+          </div>
         </li>
         
         <li><hr className="dropdown-divider" /></li>

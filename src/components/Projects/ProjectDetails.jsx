@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ModusIcon from '../Modus/ModusIcon';
 import AuthImage from '../Shared/AuthImage';
+import CopyableText from '../Modus/CopyableText';
 import { getProjectDetails } from '../../api/projectsApi';
 import { getProjectGroups } from '../../api/groupsApi';
 import { getMyProjectRole, getProjectUsers } from '../../api/usersApi';
@@ -225,14 +226,27 @@ const ProjectDetails = ({ project, region, getValidToken, onBack }) => {
         <div className="bg-white p-3 rounded border shadow-sm">
           <h5>Gebruikers in dit project</h5>
           <ul className="list-group list-group-flush mt-3">
-            {users.map(u => (
+            {users.map(u => {
+              const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+              return (
               <li key={u.id} className="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>{u.firstName} {u.lastName}</strong> <span className="text-muted ms-2">{u.email}</span>
+                <div className="d-flex flex-column min-w-0 me-3">
+                  <CopyableText
+                    value={fullName}
+                    buttonAriaLabel={`Kopieer naam ${fullName}`}
+                  >
+                    <strong>{fullName}</strong>
+                  </CopyableText>
+                  <CopyableText
+                    value={u.email}
+                    className="text-muted"
+                    buttonAriaLabel={`Kopieer e-mail ${u.email}`}
+                  />
                 </div>
                 <span className={`badge ${u.role === 'ADMIN' ? 'bg-primary' : 'bg-secondary'}`}>{u.role}</span>
               </li>
-            ))}
+              );
+            })}
             {users.length === 0 && <li className="list-group-item text-muted">Geen gebruikers gevonden.</li>}
           </ul>
         </div>

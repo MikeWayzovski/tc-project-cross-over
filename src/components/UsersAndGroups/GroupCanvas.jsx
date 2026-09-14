@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '@trimble-oss/trimble-id-react';
 import ModusIcon from '../Modus/ModusIcon';
+import CopyableText from '../Modus/CopyableText';
 import { getGroupUsers } from '../../api/groupsApi';
 import { Logger } from '../../utils/logger';
 import { readStoredToken } from '../../utils/accessToken';
@@ -138,7 +139,9 @@ const GroupCanvas = ({ groups, isLoading, region }) => {
                             </div>
                           ) : members && members.length > 0 ? (
                             <ul className="list-unstyled mb-0">
-                              {members.map((user) => (
+                              {members.map((user) => {
+                                const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+                                return (
                                 <li key={user.id} className="d-flex align-items-center py-1">
                                   <span
                                     className="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center text-white me-2 flex-shrink-0 small"
@@ -147,12 +150,21 @@ const GroupCanvas = ({ groups, isLoading, region }) => {
                                   >
                                     {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                                   </span>
-                                  <span className="text-truncate">
-                                    <span className="fw-semibold me-1">{user.firstName} {user.lastName}</span>
-                                    <span className="text-muted small">({user.email})</span>
+                                  <span className="d-flex flex-column min-w-0">
+                                    <CopyableText
+                                      value={fullName}
+                                      className="fw-semibold small"
+                                      buttonAriaLabel={`Kopieer naam ${fullName}`}
+                                    />
+                                    <CopyableText
+                                      value={user.email}
+                                      className="text-muted small"
+                                      buttonAriaLabel={`Kopieer e-mail ${user.email}`}
+                                    />
                                   </span>
                                 </li>
-                              ))}
+                                );
+                              })}
                             </ul>
                           ) : (
                             <p className="text-center text-muted small mb-0 py-2">

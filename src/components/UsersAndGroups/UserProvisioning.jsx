@@ -5,6 +5,7 @@ import { getProjectGroups, createProjectGroup, addUserToGroup, removeUserFromGro
 import { addUserToProject, getUserByEmail, getProjectUsers, getUserDetails } from '../../api/usersApi';
 import { Logger } from '../../utils/logger';
 import ConfirmModal from '../Modus/ConfirmModal';
+import CopyableText from '../Modus/CopyableText';
 import { readStoredToken } from '../../utils/accessToken';
 
 const UserProvisioning = ({ projects, region, showToast }) => {
@@ -458,8 +459,17 @@ const UserProvisioning = ({ projects, region, showToast }) => {
                     {sourceUserDetails.firstName?.charAt(0)}{sourceUserDetails.lastName?.charAt(0)}
                   </div>
                 )}
-                <h5 className="fw-bold mb-0">{sourceUserDetails.firstName} {sourceUserDetails.lastName}</h5>
-                <span className="text-muted small">{sourceUserDetails.email}</span>
+                <h5 className="fw-bold mb-0">
+                  <CopyableText
+                    value={`${sourceUserDetails.firstName || ''} ${sourceUserDetails.lastName || ''}`.trim()}
+                    buttonAriaLabel={`Kopieer naam ${sourceUserDetails.firstName} ${sourceUserDetails.lastName}`}
+                  />
+                </h5>
+                <CopyableText
+                  value={sourceUserDetails.email}
+                  className="text-muted small"
+                  buttonAriaLabel={`Kopieer e-mail ${sourceUserDetails.email}`}
+                />
               </div>
 
               <div className="border-top pt-3">
